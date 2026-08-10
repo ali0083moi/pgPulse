@@ -1,0 +1,27 @@
+{
+  "name": "pgpulse-backend",
+  "version": "1.0.0",
+  "description": "PgPulse Backend Server - PostgreSQL Discovery & Execution Engine",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dockerode": "^4.0.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/dockerode": "^4.0.1",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.9",
+    "@types/pg": "^8.11.6",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.2"
+  }
+}
