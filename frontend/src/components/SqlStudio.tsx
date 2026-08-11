@@ -7,12 +7,17 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  Table as TableIcon,
   BarChart2,
   X,
-  GripHorizontal,
   ChevronRight,
   ChevronLeft,
+  Table as TableIcon,
+  List,
+  Key,
+  Network,
+  Database as DbIcon,
+  Users,
+  Search,
 } from 'lucide-react';
 import { DiscoveredSource, QueryResultPayload, SchemaTreeResponse } from '../types';
 import { executeSql } from '../services/api';
@@ -24,13 +29,50 @@ interface SqlStudioProps {
   schemaData: SchemaTreeResponse | null;
 }
 
+const QUICK_COMMANDS = [
+  {
+    id: 'list-tables',
+    label: '📋 List Tables',
+    sql: `-- List all user tables in public schema\nSELECT table_name, table_type \nFROM information_schema.tables \nWHERE table_schema = 'public'\nORDER BY table_name;`,
+  },
+  {
+    id: 'list-columns',
+    label: '🔍 Columns & Data Types',
+    sql: `-- Describe all columns and data types\nSELECT \n  table_name, \n  column_name, \n  data_type, \n  is_nullable, \n  column_default\nFROM information_schema.columns\nWHERE table_schema = 'public'\nORDER BY table_name, ordinal_position;`,
+  },
+  {
+    id: 'foreign-keys',
+    label: '🔗 Foreign Keys',
+    sql: `-- View foreign key relationships\nSELECT \n  tc.table_name,\n  kcu.column_name,\n  ccu.table_name AS foreign_table_name,\n  ccu.column_name AS foreign_column_name\nFROM information_schema.table_constraints AS tc\nJOIN information_schema.key_column_usage AS kcu \n  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema\nJOIN information_schema.constraint_column_usage AS ccu \n  ON ccu.constraint_name = tc.constraint_name\nWHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public';`,
+  },
+  {
+    id: 'primary-keys',
+    label: '🔑 Primary Keys',
+    sql: `-- View primary key constraints\nSELECT \n  tc.table_name, \n  kcu.column_name\nFROM information_schema.table_constraints tc\nJOIN information_schema.key_column_usage kcu \n  ON tc.constraint_name = kcu.constraint_name\nWHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public';`,
+  },
+  {
+    id: 'table-sizes',
+    label: '📊 Table Disk Sizes',
+    sql: `-- Table sizes in human readable format\nSELECT \n  table_name,\n  pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS total_size,\n  pg_size_pretty(pg_relation_size(quote_ident(table_name))) AS data_size\nFROM information_schema.tables \nWHERE table_schema = 'public'\nORDER BY pg_total_relation_size(quote_ident(table_name)) DESC;`,
+  },
+  {
+    id: 'list-databases',
+    label: '🗄️ List Databases',
+    sql: `-- List all non-template databases and disk usage\nSELECT \n  datname AS database_name,\n  pg_size_pretty(pg_database_size(datname)) AS db_size\nFROM pg_database\nWHERE datistemplate = false\nORDER BY pg_database_size(datname) DESC;`,
+  },
+  {
+    id: 'list-users',
+    label: '👥 System Users & Roles',
+    sql: `-- List database roles and permissions\nSELECT rolname AS username, rolsuper AS is_superuser, rolcreatedb AS can_create_db, rolcanlogin AS can_login \nFROM pg_roles \nWHERE rolname NOT LIKE 'pg_%'\nORDER BY rolname;`,
+  },
+];
+
 export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }) => {
   const [sql, setSql] = useState<string>(
-    '-- Write your SQL query here\nSELECT u.full_name, COUNT(o.id) AS total_orders, SUM(o.total_amount) AS total_spent\nFROM users u\nJOIN orders o ON u.id = o.user_id\nGROUP BY u.full_name;\n'
+    '-- Write your SQL query here\nSELECT table_name FROM information_schema.tables WHERE table_schema = \'public\';\n'
   );
   const [result, setResult] = useState<QueryResultPayload | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'chart'>('grid');
 
   // Resizable Editor State (Height %)
   const [editorHeightPercent, setEditorHeightPercent] = useState<number>(45);
@@ -105,11 +147,14 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }
   }, [monaco, schemaData]);
 
   // Execute SQL Query
-  const handleRunQuery = async () => {
-    if (!activeSource || !sql.trim()) return;
+  const handleRunQuery = async (queryOverride?: string) => {
+    if (!activeSource) return;
+    const sqlToRun = queryOverride !== undefined ? queryOverride : sql;
+    if (!sqlToRun.trim()) return;
+
     setLoading(true);
     try {
-      const res = await executeSql(activeSource.id, sql);
+      const res = await executeSql(activeSource.id, sqlToRun);
       setResult(res);
     } catch (err: any) {
       setResult({
@@ -193,7 +238,7 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }
       <div className="h-12 border-b border-slate-800 bg-slate-900/60 px-4 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-3">
           <button
-            onClick={handleRunQuery}
+            onClick={() => handleRunQuery()}
             disabled={loading || !activeSource}
             className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
             title="Execute SQL (Ctrl + Enter)"
@@ -227,6 +272,55 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }
             {isAnalyticsOpen ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
+      </div>
+
+      {/* Quick Developer Commands & Dynamic Table Chips Bar */}
+      <div className="h-10 border-b border-slate-800/80 bg-slate-950/80 px-4 flex items-center gap-2 shrink-0 overflow-x-auto">
+        <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-cyan-400 shrink-0 mr-1">
+          <List className="w-3.5 h-3.5" />
+          <span>Quick Actions:</span>
+        </div>
+
+        {/* Essential Postgres Schema Actions */}
+        {QUICK_COMMANDS.map((cmd) => (
+          <button
+            key={cmd.id}
+            onClick={() => {
+              setSql(cmd.sql);
+              handleRunQuery(cmd.sql);
+            }}
+            className="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shadow-sm"
+          >
+            {cmd.label}
+          </button>
+        ))}
+
+        {/* Active Database Tables Quick Selector Chips */}
+        {schemaData?.tables && schemaData.tables.length > 0 && (
+          <>
+            <div className="h-4 w-[1px] bg-slate-800 shrink-0 mx-1" />
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase mr-1">Tables:</span>
+              {schemaData.tables.map((tbl) => {
+                const sampleQuery = `SELECT * FROM "${tbl.name}" LIMIT 50;`;
+                return (
+                  <button
+                    key={tbl.name}
+                    onClick={() => {
+                      setSql(sampleQuery);
+                      handleRunQuery(sampleQuery);
+                    }}
+                    className="px-2.5 py-1 rounded-md bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 text-xs font-mono font-medium whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer"
+                    title={`Select top 50 rows from ${tbl.name}`}
+                  >
+                    <TableIcon className="w-3 h-3 text-cyan-400" />
+                    {tbl.name}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Monaco SQL Editor Section (Resizable Height) */}
@@ -296,7 +390,7 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }
             {!result && (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
                 <Sparkles className="w-8 h-8 text-slate-600 animate-pulse" />
-                <p className="text-sm font-medium">Write SQL query and press Run (Ctrl+Enter)</p>
+                <p className="text-sm font-medium">Write SQL query and press Run (Ctrl+Enter) or click a Quick Action button above</p>
               </div>
             )}
 
