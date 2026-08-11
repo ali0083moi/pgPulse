@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Database, Plus, Check, AlertTriangle, Code } from 'lucide-react';
+import { X, Database, Plus, AlertTriangle, Check, Globe } from 'lucide-react';
 import { executeSql } from '../services/api';
 
 interface CreateDatabaseModalProps {
@@ -16,29 +16,22 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   activeSourceId,
 }) => {
   const [dbName, setDbName] = useState('');
-  const [owner, setOwner] = useState('postgres');
   const [encoding, setEncoding] = useState('UTF8');
-  const [connLimit, setConnLimit] = useState('-1');
+  const [template, setTemplate] = useState('template1');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const sanitizedDbName = dbName.trim().replace(/[^a-zA-Z0-9_]/g, '');
-  const sanitizedOwner = owner.trim().replace(/[^a-zA-Z0-9_]/g, '') || 'postgres';
-
-  const generatedSql = sanitizedDbName
-    ? `CREATE DATABASE "${sanitizedDbName}" WITH OWNER = "${sanitizedOwner}" ENCODING = '${encoding}' CONNECTION LIMIT = ${connLimit || -1};`
-    : '-- Fill in Database Name to see generated DDL';
-
-  const handleCreateDatabase = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSourceId) {
       setError('No active database source connected.');
       return;
     }
-    if (!sanitizedDbName) {
-      setError('Please enter a valid Database Name.');
+    const cleanDbName = dbName.trim();
+    if (!cleanDbName) {
+      setError('Please enter a Database Name.');
       return;
     }
 
@@ -46,12 +39,14 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
     setError(null);
 
     try {
-      const res = await executeSql(activeSourceId, generatedSql);
+      const sql = `CREATE DATABASE "${cleanDbName}" ENCODING '${encoding}' TEMPLATE ${template};`;
+      const res = await executeSql(activeSourceId, sql);
       if (res.error) {
         setError(res.error);
       } else {
-        onDatabaseCreated(sanitizedDbName);
+        onDatabaseCreated(cleanDbName);
         onClose();
+        setDbName('');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create database');
@@ -61,110 +56,99 @@ export const CreateDatabaseModal: React.FC<CreateDatabaseModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn select-none">
+      <div className="w-full max-w-lg bg-[#161B22] border border-[#30363D] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+        <div className="px-6 py-4 border-b border-[#30363D] flex items-center justify-between bg-[#161B22]">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+            <div className="p-2 rounded-xl bg-[#1F6FEB]/10 border border-[#1F6FEB]/30 text-[#58A6FF]">
               <Database className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-100">Create New PostgreSQL Database</h2>
-              <p className="text-xs text-slate-400">Visually configure and create a database</p>
+              <h2 className="text-base font-bold text-[#F0F6FC]">Create New PostgreSQL Database</h2>
+              <p className="text-xs text-[#8B949E]">Visually create a database with encoding & template settings</p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleCreateDatabase} className="p-6 space-y-4">
+        {/* Modal Form */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-900/80 text-rose-300 text-xs flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[#211213] border border-[#F85149]/40 text-[#FF7B72] text-xs flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#F85149] shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
+          {/* Database Name */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Database Name <span className="text-rose-400">*</span></label>
+            <label className="text-xs font-semibold text-[#8B949E]">Database Name <span className="text-[#F85149]">*</span></label>
             <input
               type="text"
               required
               value={dbName}
               onChange={(e) => setDbName(e.target.value)}
-              placeholder="e.g. ecommerce_v2_db"
-              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-500 font-mono"
+              placeholder="e.g. analytics_db, production_v2"
+              className="w-full px-3.5 py-2 rounded-xl bg-[#0D1117] border border-[#30363D] text-sm text-[#C9D1D9] placeholder-[#484F58] focus:outline-none focus:border-[#58A6FF] font-mono font-bold"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Encoding & Template */}
+          <div className="grid grid-cols-2 gap-4 pt-1">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Owner Role</label>
-              <input
-                type="text"
-                value={owner}
-                onChange={(e) => setOwner(e.target.value)}
-                placeholder="postgres"
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Encoding</label>
+              <label className="text-xs font-semibold text-[#8B949E]">Character Encoding</label>
               <select
                 value={encoding}
                 onChange={(e) => setEncoding(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+                className="w-full px-3 py-2 rounded-xl bg-[#0D1117] border border-[#30363D] text-xs font-mono text-[#C9D1D9] focus:outline-none focus:border-[#58A6FF]"
               >
                 <option value="UTF8">UTF8 (Recommended)</option>
                 <option value="LATIN1">LATIN1</option>
                 <option value="SQL_ASCII">SQL_ASCII</option>
               </select>
             </div>
-          </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300">Connection Limit</label>
-            <input
-              type="number"
-              value={connLimit}
-              onChange={(e) => setConnLimit(e.target.value)}
-              placeholder="-1 for unlimited"
-              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
-            />
-          </div>
-
-          {/* DDL Preview */}
-          <div className="space-y-1.5 pt-2">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-              <Code className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Generated DDL Preview:</span>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[#8B949E]">Database Template</label>
+              <select
+                value={template}
+                onChange={(e) => setTemplate(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-[#0D1117] border border-[#30363D] text-xs font-mono text-[#C9D1D9] focus:outline-none focus:border-[#58A6FF]"
+              >
+                <option value="template1">template1 (Default)</option>
+                <option value="template0">template0 (Clean)</option>
+              </select>
             </div>
-            <pre className="p-3 rounded-xl bg-slate-950 border border-slate-800/80 text-cyan-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap">
-              {generatedSql}
-            </pre>
+          </div>
+
+          {/* SQL Command Preview */}
+          <div className="pt-2">
+            <label className="text-xs font-semibold text-[#8B949E] block mb-1">Generated DDL Command:</label>
+            <div className="p-3 rounded-xl bg-[#0D1117] border border-[#30363D] font-mono text-xs text-[#58A6FF]">
+              CREATE DATABASE "{dbName.trim() || 'dbname'}" ENCODING '{encoding}' TEMPLATE {template};
+            </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-800">
+          <div className="pt-4 border-t border-[#30363D] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors"
+              className="px-4 py-2 rounded-xl bg-[#21262D] hover:bg-[#30363D] text-[#C9D1D9] text-xs font-semibold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={loading || !sanitizedDbName}
-              className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+              disabled={loading || !dbName.trim()}
+              className="px-5 py-2 rounded-xl bg-[#238636] hover:bg-[#2EA043] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
               {loading ? 'Creating...' : 'Create Database'}

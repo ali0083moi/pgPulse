@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers, PlusCircle, Star, Github } from 'lucide-react';
+import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers, PlusCircle, Star } from 'lucide-react';
 import { DiscoveredSource } from '../types';
 
 interface HeaderProps {
@@ -26,58 +26,55 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
 }) => {
   return (
-    <header className="h-16 border-b border-slate-800 bg-[#0B0F19]/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0 z-30">
+    <header className="h-14 border-b border-[#30363D] bg-[#161B22] px-5 flex items-center justify-between shrink-0 z-30 select-none">
       {/* Brand & Active Source & Database Selector */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-emerald-400 p-0.5 shadow-lg shadow-cyan-500/20">
-            <div className="w-full h-full bg-[#0B0F19] rounded-[10px] flex items-center justify-center">
-              <Database className="w-5 h-5 text-cyan-400" />
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#1F6FEB]/15 border border-[#1F6FEB]/40 flex items-center justify-center text-[#58A6FF]">
+            <Database className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+              <span className="font-bold text-base tracking-tight text-[#F0F6FC]">
                 PgPulse
               </span>
-              <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-cyan-950 text-cyan-400 border border-cyan-800/50 rounded-full">
+              <span className="px-1.5 py-0.2 text-[10px] font-semibold bg-[#21262D] text-[#8B949E] border border-[#30363D] rounded">
                 v1.0
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium">PostgreSQL Studio & Workbench</p>
           </div>
         </div>
 
-        {/* Source Switcher Button */}
-        <div className="h-6 w-[1px] bg-slate-800" />
+        <div className="h-5 w-[1px] bg-[#30363D]" />
 
+        {/* Source Switcher Button */}
         <button
           onClick={onOpenSourceModal}
-          className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all text-sm group cursor-pointer"
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[#0D1117] hover:bg-[#21262D] border border-[#30363D] transition-all text-xs group cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${activeSource ? 'bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400' : 'bg-amber-500'}`} />
-            <Server className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
-            <span className="font-medium text-slate-200">
+            <span className={`w-2 h-2 rounded-full ${activeSource ? 'bg-[#3FB950]' : 'bg-[#D29922]'}`} />
+            <Server className="w-3.5 h-3.5 text-[#8B949E] group-hover:text-[#58A6FF] transition-colors" />
+            <span className="font-medium text-[#C9D1D9]">
               {activeSource ? activeSource.name : 'Select PostgreSQL Source'}
             </span>
           </div>
-          <Plus className="w-3.5 h-3.5 text-slate-400 ml-1" />
+          <Plus className="w-3.5 h-3.5 text-[#8B949E] ml-1" />
         </button>
 
         {/* Database Selector Dropdown & New DB Button */}
         {activeSource && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 bg-slate-900 border border-cyan-800/60 rounded-lg px-2 py-1">
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-[11px] font-semibold uppercase text-slate-400">DB:</span>
+            <div className="flex items-center gap-2 bg-[#0D1117] border border-[#30363D] rounded-lg px-2.5 py-1">
+              <Layers className="w-3.5 h-3.5 text-[#58A6FF]" />
+              <span className="text-[11px] font-semibold uppercase text-[#8B949E]">DB:</span>
               <select
                 value={activeDb}
                 onChange={(e) => onSelectDatabase(e.target.value)}
-                className="bg-transparent text-xs font-bold text-cyan-300 font-mono focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-[#58A6FF] font-mono focus:outline-none cursor-pointer"
               >
                 {availableDbs.map((dbName) => (
-                  <option key={dbName} value={dbName} className="bg-slate-900 text-slate-200 font-mono">
+                  <option key={dbName} value={dbName} className="bg-[#161B22] text-[#C9D1D9] font-mono">
                     {dbName}
                   </option>
                 ))}
@@ -86,77 +83,71 @@ export const Header: React.FC<HeaderProps> = ({
 
             <button
               onClick={onOpenCreateDbModal}
-              className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-2.5 py-1 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#C9D1D9] hover:text-[#58A6FF] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
               title="Create a new PostgreSQL database"
             >
-              <PlusCircle className="w-3.5 h-3.5 text-cyan-400" />
-              <span>+ New DB</span>
+              <PlusCircle className="w-3.5 h-3.5 text-[#58A6FF]" />
+              <span>New DB</span>
             </button>
           </div>
         )}
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+      <div className="flex items-center gap-1 bg-[#0D1117] p-1 rounded-lg border border-[#30363D]">
         <button
           onClick={() => setActiveTab('editor')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            activeTab === 'editor'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-          }`}
+          className={`flex items-center gap-2 px-3.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${activeTab === 'editor'
+              ? 'bg-[#1F6FEB] text-white font-semibold'
+              : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
+            }`}
         >
-          <Code className="w-4 h-4" />
+          <Code className="w-3.5 h-3.5" />
           SQL Studio
         </button>
 
         <button
           onClick={() => setActiveTab('schema')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            activeTab === 'schema'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-          }`}
+          className={`flex items-center gap-2 px-3.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${activeTab === 'schema'
+              ? 'bg-[#1F6FEB] text-white font-semibold'
+              : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
+            }`}
         >
-          <Network className="w-4 h-4" />
+          <Network className="w-3.5 h-3.5" />
           Schema & ERD
         </button>
 
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-            activeTab === 'users'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-          }`}
+          className={`flex items-center gap-2 px-3.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${activeTab === 'users'
+              ? 'bg-[#1F6FEB] text-white font-semibold'
+              : 'text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]'
+            }`}
         >
-          <Shield className="w-4 h-4" />
+          <Shield className="w-3.5 h-3.5" />
           Users & Access
         </button>
       </div>
 
       {/* Action utilities & GitHub Star Button */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <a
           href="https://github.com/ali0083moi/pgPulse"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 transition-all transform hover:-translate-y-0.5 cursor-pointer group"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#D29922] hover:bg-[#E3B341] border border-[#E3B341] text-slate-950 font-bold text-xs shadow-md transition-all cursor-pointer group"
           title="Give PgPulse a Star on GitHub!"
         >
-          <Star className="w-4 h-4 text-amber-400 fill-amber-400/40 group-hover:fill-amber-400 group-hover:scale-110 transition-all duration-300" />
-          <span className="hidden sm:inline font-bold">Star on GitHub</span>
-          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
-            ★
-          </span>
+          <Star className="w-3.5 h-3.5 text-slate-950 fill-slate-950 group-hover:scale-110 transition-transform" />
+          <span className="hidden sm:inline">Star on GitHub</span>
         </a>
 
         <button
           onClick={onRefresh}
-          className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg bg-[#0D1117] hover:bg-[#21262D] border border-[#30363D] text-[#8B949E] hover:text-[#C9D1D9] transition-colors cursor-pointer"
           title="Refresh Data"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
     </header>

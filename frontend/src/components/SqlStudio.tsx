@@ -19,6 +19,12 @@ import {
   Activity,
   Plus,
   Bookmark,
+  Search,
+  Link as LinkIcon,
+  Key,
+  PieChart,
+  Database as DbIcon,
+  Users,
 } from 'lucide-react';
 import { DiscoveredSource, QueryResultPayload, SchemaTreeResponse, HistoryItem, SavedSnippet } from '../types';
 import { executeSql } from '../services/api';
@@ -39,37 +45,51 @@ const STORAGE_KEY_SNIPPETS = 'pgpulse_saved_snippets';
 const QUICK_COMMANDS = [
   {
     id: 'list-tables',
-    label: '📋 List Tables',
+    label: 'List Tables',
+    icon: TableIcon,
+    iconColor: 'text-[#58A6FF]',
     sql: `-- List all user tables in public schema\nSELECT table_name, table_type \nFROM information_schema.tables \nWHERE table_schema = 'public'\nORDER BY table_name;`,
   },
   {
     id: 'list-columns',
-    label: '🔍 Columns & Data Types',
+    label: 'Columns & Types',
+    icon: Search,
+    iconColor: 'text-[#58A6FF]',
     sql: `-- Describe all columns and data types\nSELECT \n  table_name, \n  column_name, \n  data_type, \n  is_nullable, \n  column_default\nFROM information_schema.columns\nWHERE table_schema = 'public'\nORDER BY table_name, ordinal_position;`,
   },
   {
     id: 'foreign-keys',
-    label: '🔗 Foreign Keys',
+    label: 'Foreign Keys',
+    icon: LinkIcon,
+    iconColor: 'text-[#A371F7]',
     sql: `-- View foreign key relationships\nSELECT \n  tc.table_name,\n  kcu.column_name,\n  ccu.table_name AS foreign_table_name,\n  ccu.column_name AS foreign_column_name\nFROM information_schema.table_constraints AS tc\nJOIN information_schema.key_column_usage AS kcu \n  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema\nJOIN information_schema.constraint_column_usage AS ccu \n  ON ccu.constraint_name = tc.constraint_name\nWHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public';`,
   },
   {
     id: 'primary-keys',
-    label: '🔑 Primary Keys',
+    label: 'Primary Keys',
+    icon: Key,
+    iconColor: 'text-[#D29922]',
     sql: `-- View primary key constraints\nSELECT \n  tc.table_name, \n  kcu.column_name\nFROM information_schema.table_constraints tc\nJOIN information_schema.key_column_usage kcu \n  ON tc.constraint_name = kcu.constraint_name\nWHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = 'public';`,
   },
   {
     id: 'table-sizes',
-    label: '📊 Table Disk Sizes',
+    label: 'Disk Sizes',
+    icon: PieChart,
+    iconColor: 'text-[#3FB950]',
     sql: `-- Table sizes in human readable format\nSELECT \n  table_name,\n  pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS total_size,\n  pg_size_pretty(pg_relation_size(quote_ident(table_name))) AS data_size\nFROM information_schema.tables \nWHERE table_schema = 'public'\nORDER BY pg_total_relation_size(quote_ident(table_name)) DESC;`,
   },
   {
     id: 'list-databases',
-    label: '🗄️ List Databases',
+    label: 'Databases',
+    icon: DbIcon,
+    iconColor: 'text-[#58A6FF]',
     sql: `-- List all non-template databases and disk usage\nSELECT \n  datname AS database_name,\n  pg_size_pretty(pg_database_size(datname)) AS db_size\nFROM pg_database\nWHERE datistemplate = false\nORDER BY pg_database_size(datname) DESC;`,
   },
   {
     id: 'list-users',
-    label: '👥 System Users & Roles',
+    label: 'System Roles',
+    icon: Users,
+    iconColor: 'text-[#A371F7]',
     sql: `-- List database roles and permissions\nSELECT rolname AS username, rolsuper AS is_superuser, rolcreatedb AS can_create_db, rolcanlogin AS can_login \nFROM pg_roles \nWHERE rolname NOT LIKE 'pg_%'\nORDER BY rolname;`,
   },
 ];
@@ -331,35 +351,35 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
   }, [handleMouseMove, handleMouseUp]);
 
   return (
-    <div ref={containerRef} className="flex-1 flex flex-col h-full overflow-hidden bg-[#0B0F19]">
+    <div ref={containerRef} className="flex-1 flex flex-col h-full overflow-hidden bg-[#0D1117]">
       {/* Top Action Toolbar */}
-      <div className="h-12 border-b border-slate-800 bg-slate-900/60 px-4 flex items-center justify-between shrink-0 z-10">
-        <div className="flex items-center gap-3">
+      <div className="h-11 border-b border-[#30363D] bg-[#161B22] px-4 flex items-center justify-between shrink-0 z-10 select-none">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => handleRunQuery()}
             disabled={loading || !activeSource}
-            className="px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+            className="px-3.5 py-1 rounded-lg bg-[#238636] hover:bg-[#2EA043] disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
             title="Execute SQL (Ctrl + Enter)"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
-            Run Query (Ctrl+Enter)
+            <span>Run (Ctrl+Enter)</span>
           </button>
 
           <button
             onClick={() => handleSaveSnippet(sql)}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#D29922] hover:text-[#E3B341] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
             title="Save current SQL as a snippet"
           >
-            <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-            Save Snippet
+            <Bookmark className="w-3.5 h-3.5 text-[#D29922]" />
+            <span>Save Snippet</span>
           </button>
 
           <button
             onClick={() => setSql('')}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3 py-1 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#8B949E] hover:text-[#C9D1D9] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Trash2 className="w-3.5 h-3.5 text-slate-400" />
-            Clear
+            <Trash2 className="w-3.5 h-3.5 text-[#8B949E]" />
+            <span>Clear</span>
           </button>
         </div>
 
@@ -368,20 +388,20 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
           {onOpenDbActivityModal && (
             <button
               onClick={onOpenDbActivityModal}
-              className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3 py-1 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#F85149] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer"
               title="Live DB Process Monitor & Process Killer"
             >
-              <Activity className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span>⚡ DB Activity</span>
+              <Activity className="w-3.5 h-3.5 text-[#F85149]" />
+              <span>DB Activity</span>
             </button>
           )}
 
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer ${
               isSidebarOpen
-                ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-300 shadow-sm'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1F6FEB]/15 border-[#1F6FEB]/40 text-[#58A6FF]'
+                : 'bg-[#21262D] border-[#30363D] text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
             title="Toggle Query History & Saved Snippets Sidebar"
           >
@@ -391,10 +411,10 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
 
           <button
             onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
-            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+            className={`px-3 py-1 rounded-lg border text-xs font-medium flex items-center gap-2 transition-all cursor-pointer ${
               isAnalyticsOpen
-                ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-300 shadow-sm'
-                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1F6FEB]/15 border-[#1F6FEB]/40 text-[#58A6FF]'
+                : 'bg-[#21262D] border-[#30363D] text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
             title="Toggle Right Live Analytics Side Panel"
           >
@@ -406,52 +426,56 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
       </div>
 
       {/* Quick Developer Commands & Dynamic Table Chips Bar */}
-      <div className="h-10 border-b border-slate-800/80 bg-slate-950/80 px-4 flex items-center gap-2 shrink-0 overflow-x-auto">
+      <div className="h-9 border-b border-[#30363D] bg-[#161B22] px-4 flex items-center gap-2 shrink-0 overflow-x-auto select-none">
         {onOpenCreateTableModal && (
           <button
             onClick={onOpenCreateTableModal}
-            className="px-3 py-1 rounded-md bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-md shadow-cyan-500/20 mr-1"
+            className="px-2.5 py-0.5 rounded bg-[#1F6FEB] hover:bg-[#388BFD] text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mr-1"
           >
-            <TableIcon className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>+ Create Table</span>
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Create Table</span>
           </button>
         )}
 
         {onOpenCreateIndexModal && (
           <button
             onClick={onOpenCreateIndexModal}
-            className="px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-md shadow-amber-500/20 mr-1"
+            className="px-2.5 py-0.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#58A6FF] font-medium text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 mr-1"
           >
             <Zap className="w-3.5 h-3.5 fill-current" />
-            <span>+ Create Index</span>
+            <span>Create Index</span>
           </button>
         )}
 
-        <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-cyan-400 shrink-0 mr-1">
+        <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-[#8B949E] shrink-0 mr-1">
           <List className="w-3.5 h-3.5" />
           <span>Quick Actions:</span>
         </div>
 
-        {/* Essential Postgres Schema Actions */}
-        {QUICK_COMMANDS.map((cmd) => (
-          <button
-            key={cmd.id}
-            onClick={() => {
-              setSql(cmd.sql);
-              handleRunQuery(cmd.sql);
-            }}
-            className="px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-300 text-xs font-medium whitespace-nowrap transition-all cursor-pointer shadow-sm"
-          >
-            {cmd.label}
-          </button>
-        ))}
+        {/* Essential Postgres Schema Actions (GitHub Dark Clean Buttons) */}
+        {QUICK_COMMANDS.map((cmd) => {
+          const CmdIcon = cmd.icon;
+          return (
+            <button
+              key={cmd.id}
+              onClick={() => {
+                setSql(cmd.sql);
+                handleRunQuery(cmd.sql);
+              }}
+              className="px-2.5 py-0.5 rounded bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#C9D1D9] hover:text-[#58A6FF] text-xs font-medium whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <CmdIcon className={`w-3.5 h-3.5 ${cmd.iconColor}`} />
+              <span>{cmd.label}</span>
+            </button>
+          );
+        })}
 
         {/* Active Database Tables Quick Selector Chips */}
         {schemaData?.tables && schemaData.tables.length > 0 && (
           <>
-            <div className="h-4 w-[1px] bg-slate-800 shrink-0 mx-1" />
+            <div className="h-4 w-[1px] bg-[#30363D] shrink-0 mx-1" />
             <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase mr-1">Tables:</span>
+              <span className="text-[11px] font-semibold text-[#8B949E] uppercase mr-1">Tables:</span>
               {schemaData.tables.map((tbl) => {
                 const sampleQuery = `SELECT * FROM "${tbl.name}" LIMIT 50;`;
                 return (
@@ -461,10 +485,10 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
                       setSql(sampleQuery);
                       handleRunQuery(sampleQuery);
                     }}
-                    className="px-2.5 py-1 rounded-md bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 text-cyan-300 text-xs font-mono font-medium whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-2 py-0.5 rounded bg-[#0D1117] hover:bg-[#21262D] border border-[#30363D] text-[#58A6FF] text-xs font-mono font-medium whitespace-nowrap flex items-center gap-1 transition-all cursor-pointer"
                     title={`Select top 50 rows from ${tbl.name}`}
                   >
-                    <TableIcon className="w-3 h-3 text-cyan-400" />
+                    <TableIcon className="w-3 h-3 text-[#58A6FF]" />
                     {tbl.name}
                   </button>
                 );
@@ -475,25 +499,25 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
       </div>
 
       {/* Editor & Collapsible History/Snippets Sidebar Container */}
-      <div style={{ height: `${editorHeightPercent}%` }} className="min-h-[120px] max-h-[85%] flex relative border-b border-slate-800">
+      <div style={{ height: `${editorHeightPercent}%` }} className="min-h-[120px] max-h-[85%] flex relative border-b border-[#30363D]">
         {/* History / Snippets Left Drawer */}
         {isSidebarOpen && (
-          <div className="w-72 bg-slate-900/90 border-r border-slate-800 flex flex-col h-full shrink-0 z-10">
+          <div className="w-72 bg-[#161B22] border-r border-[#30363D] flex flex-col h-full shrink-0 z-10">
             {/* Tabs */}
-            <div className="flex items-center justify-between p-2 border-b border-slate-800 bg-slate-950/60">
-              <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+            <div className="flex items-center justify-between p-2 border-b border-[#30363D] bg-[#0D1117]">
+              <div className="flex gap-1 bg-[#161B22] p-0.5 rounded border border-[#30363D]">
                 <button
                   onClick={() => setSidebarTab('history')}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                    sidebarTab === 'history' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                    sidebarTab === 'history' ? 'bg-[#1F6FEB] text-white' : 'text-[#8B949E] hover:text-[#C9D1D9]'
                   }`}
                 >
                   History ({queryHistory.length})
                 </button>
                 <button
                   onClick={() => setSidebarTab('snippets')}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
-                    sidebarTab === 'snippets' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  className={`px-2.5 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${
+                    sidebarTab === 'snippets' ? 'bg-[#D29922] text-black font-bold' : 'text-[#8B949E] hover:text-[#C9D1D9]'
                   }`}
                 >
                   Snippets ({savedSnippets.length})
@@ -502,26 +526,26 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
 
               <button
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1 rounded text-slate-500 hover:text-slate-300"
+                className="p-1 rounded text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
 
             {/* Content List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
               {sidebarTab === 'history' ? (
                 queryHistory.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-6">No query history yet.</p>
+                  <p className="text-xs text-[#8B949E] text-center py-6">No query history yet.</p>
                 ) : (
                   queryHistory.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => setSql(item.sql)}
-                      className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800/80 text-xs font-mono transition-all cursor-pointer group space-y-1.5"
+                      className="p-2 rounded bg-[#0D1117] hover:bg-[#21262D] border border-[#30363D] text-xs font-mono transition-all cursor-pointer group space-y-1"
                     >
-                      <div className="flex items-center justify-between text-[10px] text-slate-500">
-                        <span className={item.status === 'error' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                      <div className="flex items-center justify-between text-[10px] text-[#8B949E]">
+                        <span className={item.status === 'error' ? 'text-[#F85149] font-bold' : 'text-[#3FB950] font-bold'}>
                           {item.status === 'error' ? 'Failed' : `${item.durationMs}ms`}
                         </span>
                         <div className="flex items-center gap-1">
@@ -530,39 +554,39 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
                               e.stopPropagation();
                               handleSaveSnippet(item.sql);
                             }}
-                            className="p-0.5 rounded hover:bg-slate-700 text-slate-500 hover:text-amber-300"
+                            className="p-0.5 rounded hover:bg-[#30363D] text-[#8B949E] hover:text-[#D29922]"
                             title="Save as snippet"
                           >
                             <Star className="w-3 h-3" />
                           </button>
                         </div>
                       </div>
-                      <p className="text-slate-300 line-clamp-2 truncate">{item.sql}</p>
+                      <p className="text-[#C9D1D9] line-clamp-2 truncate">{item.sql}</p>
                     </div>
                   ))
                 )
               ) : savedSnippets.length === 0 ? (
-                <p className="text-xs text-slate-500 text-center py-6">No saved snippets yet. Click "Save Snippet" to add one.</p>
+                <p className="text-xs text-[#8B949E] text-center py-6">No saved snippets yet. Click "Save Snippet" to add one.</p>
               ) : (
                 savedSnippets.map((snippet) => (
                   <div
                     key={snippet.id}
                     onClick={() => setSql(snippet.sql)}
-                    className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-amber-500/20 text-xs font-mono transition-all cursor-pointer group space-y-1"
+                    className="p-2 rounded bg-[#0D1117] hover:bg-[#21262D] border border-[#30363D] text-xs font-mono transition-all cursor-pointer group space-y-1"
                   >
-                    <div className="flex items-center justify-between text-amber-300 font-bold">
+                    <div className="flex items-center justify-between text-[#D29922] font-semibold">
                       <span className="truncate">{snippet.title}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteSnippet(snippet.id);
                         }}
-                        className="p-0.5 text-slate-500 hover:text-rose-400"
+                        className="p-0.5 text-[#8B949E] hover:text-[#F85149]"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
-                    <p className="text-slate-300 line-clamp-2 truncate">{snippet.sql}</p>
+                    <p className="text-[#C9D1D9] line-clamp-2 truncate">{snippet.sql}</p>
                   </div>
                 ))
               )}
@@ -581,11 +605,11 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
             onMount={handleEditorMount}
             options={{
               minimap: { enabled: false },
-              fontSize: 14,
+              fontSize: 13,
               lineNumbers: 'on',
               scrollBeyondLastLine: false,
               automaticLayout: true,
-              padding: { top: 12, bottom: 12 },
+              padding: { top: 8, bottom: 8 },
               fontFamily: 'Fira Code, monospace',
             }}
           />
@@ -595,40 +619,40 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
       {/* Resizable Vertical Handle (Drag up/down) */}
       <div
         onMouseDown={handleMouseDownVertical}
-        className="h-2 bg-slate-900/90 border-y border-slate-800/80 hover:bg-cyan-500/80 active:bg-cyan-400 cursor-row-resize flex items-center justify-center group transition-colors shrink-0 select-none z-10"
+        className="h-1.5 bg-[#161B22] border-y border-[#30363D] hover:bg-[#1F6FEB] cursor-row-resize flex items-center justify-center group transition-colors shrink-0 select-none z-10"
         title="Drag up/down to resize Editor and Query Results"
       >
-        <div className="w-12 h-1 rounded-full bg-slate-700 group-hover:bg-slate-950 transition-colors" />
+        <div className="w-12 h-1 rounded bg-[#30363D] group-hover:bg-white transition-colors" />
       </div>
 
       {/* Bottom Main Workspace (Result Grid + Collapsible Side Analytics Panel) */}
-      <div ref={workspaceRef} className="flex-1 flex min-h-0 bg-slate-950 overflow-hidden relative">
+      <div ref={workspaceRef} className="flex-1 flex min-h-0 bg-[#0D1117] overflow-hidden relative">
         {/* Left Side: SQL Result Grid & Metadata */}
-        <div className="flex-1 flex flex-col min-w-0 h-full border-r border-slate-800/60 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 h-full border-r border-[#30363D] overflow-hidden">
           {/* Metadata Bar */}
           {result && (
-            <div className="h-9 px-4 border-b border-slate-800/80 bg-slate-900/40 flex items-center justify-between text-xs shrink-0">
+            <div className="h-8 px-4 border-b border-[#30363D] bg-[#161B22] flex items-center justify-between text-xs shrink-0 select-none">
               <div className="flex items-center gap-4">
                 {result.error ? (
-                  <div className="flex items-center gap-1.5 text-rose-400 font-medium">
-                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
-                    Query Error
+                  <div className="flex items-center gap-1.5 text-[#F85149] font-medium">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#F85149] shrink-0" />
+                    <span>Query Error</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-                    Execution Succeeded ({result.command})
+                  <div className="flex items-center gap-1.5 text-[#3FB950] font-medium">
+                    <CheckCircle className="w-3.5 h-3.5 text-[#3FB950] shrink-0" />
+                    <span>Success ({result.command})</span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-1 text-slate-400">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                <div className="flex items-center gap-1 text-[#8B949E] font-mono text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-[#8B949E]" />
                   <span>{result.durationMs} ms</span>
                 </div>
               </div>
 
-              <div className="text-slate-400 font-mono">
-                Rows: <span className="text-slate-200 font-semibold">{result.rowCount}</span>
+              <div className="text-[#8B949E] font-mono text-[11px]">
+                Rows: <span className="text-[#C9D1D9] font-semibold">{result.rowCount}</span>
               </div>
             </div>
           )}
@@ -636,15 +660,15 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
           {/* Result Content */}
           <div className="flex-1 overflow-auto relative p-2">
             {!result && (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2">
-                <Sparkles className="w-8 h-8 text-slate-600 animate-pulse" />
-                <p className="text-sm font-medium">Write SQL query and press Run (Ctrl+Enter) or click a Quick Action button above</p>
+              <div className="h-full flex flex-col items-center justify-center text-[#8B949E] space-y-2">
+                <Sparkles className="w-7 h-7 text-[#484F58]" />
+                <p className="text-xs font-medium">Write SQL query and press Run (Ctrl+Enter) or click a Quick Action button above</p>
               </div>
             )}
 
             {result?.error && (
-              <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-900/60 text-rose-300 font-mono text-sm">
-                <div className="font-bold text-rose-400 mb-1">Execution Error:</div>
+              <div className="p-3.5 rounded-lg bg-[#211213] border border-[#F85149]/40 text-[#FF7B72] font-mono text-xs">
+                <div className="font-bold text-[#F85149] mb-1">Execution Error:</div>
                 <pre className="whitespace-pre-wrap">{result.error}</pre>
               </div>
             )}
@@ -664,10 +688,10 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
         {isAnalyticsOpen && (
           <div
             onMouseDown={handleMouseDownHorizontal}
-            className="w-2 bg-slate-900/90 border-x border-slate-800/80 hover:bg-cyan-500/80 active:bg-cyan-400 cursor-col-resize flex flex-col items-center justify-center group transition-colors shrink-0 select-none z-10"
+            className="w-1.5 bg-[#161B22] border-x border-[#30363D] hover:bg-[#1F6FEB] cursor-col-resize flex flex-col items-center justify-center group transition-colors shrink-0 select-none z-10"
             title="Drag left/right to resize Live Analytics Side Panel"
           >
-            <div className="h-12 w-1 rounded-full bg-slate-700 group-hover:bg-slate-950 transition-colors" />
+            <div className="h-12 w-1 rounded bg-[#30363D] group-hover:bg-white transition-colors" />
           </div>
         )}
 
@@ -675,20 +699,20 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({
         {isAnalyticsOpen && (
           <div
             style={{ width: `${analyticsWidth}px` }}
-            className="h-full bg-slate-900/40 flex flex-col shrink-0 overflow-hidden"
+            className="h-full bg-[#161B22] flex flex-col shrink-0 overflow-hidden border-l border-[#30363D]"
           >
             {/* Analytics Panel Header */}
-            <div className="h-9 px-3 border-b border-slate-800 bg-slate-900/80 flex items-center justify-between shrink-0">
+            <div className="h-8 px-3 border-b border-[#30363D] bg-[#0D1117] flex items-center justify-between shrink-0 select-none">
               <div className="flex items-center gap-2">
-                <BarChart2 className="w-4 h-4 text-cyan-400" />
-                <span className="text-xs font-bold text-slate-200 tracking-wide">Live Data Analytics & Chart</span>
+                <BarChart2 className="w-3.5 h-3.5 text-[#58A6FF]" />
+                <span className="text-xs font-semibold text-[#C9D1D9]">Live Data Analytics & Chart</span>
               </div>
               <button
                 onClick={() => setIsAnalyticsOpen(false)}
-                className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                className="p-1 rounded text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D] transition-colors"
                 title="Close Analytics Panel"
               >
-                <X className="w-4 h-4" />
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
 

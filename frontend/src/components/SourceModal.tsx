@@ -30,7 +30,6 @@ export const SourceModal: React.FC<SourceModalProps> = ({
 }) => {
   const [tab, setTab] = useState<'discovered' | 'manual'>('discovered');
   
-  // Custom passwords/users per discovered source ID (persisted in localStorage)
   const [sourceCredentials, setSourceCredentials] = useState<Record<string, { user: string; pass: string; db: string }>>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_CREDS);
@@ -40,7 +39,6 @@ export const SourceModal: React.FC<SourceModalProps> = ({
     }
   });
   
-  // Password Reset Drawers per source ID
   const [resetDrawers, setResetDrawers] = useState<Record<string, boolean>>({});
   const [resetForms, setResetForms] = useState<Record<string, { newPass: string; sudoPass: string }>>({});
   const [resetStatus, setResetStatus] = useState<Record<string, { loading: boolean; error?: string; success?: string; requiresSudo?: boolean }>>({});
@@ -151,10 +149,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           [source.id]: { loading: false, success: res.message },
         }));
 
-        // Update creds in state & localStorage
         updateCreds(source.id, 'pass', newPassToSet);
-
-        // Auto-connect with the new password!
         await handleConnectDiscovered(source, newPassToSet);
       }
     } catch (err: any) {
@@ -220,10 +215,8 @@ export const SourceModal: React.FC<SourceModalProps> = ({
         key={source.id}
         className={`p-4 rounded-xl border transition-all space-y-3 ${
           isActive
-            ? isDocker
-              ? 'bg-cyan-950/40 border-cyan-500/80 shadow-md'
-              : 'bg-emerald-950/40 border-emerald-500/80 shadow-md'
-            : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
+            ? 'bg-[#0D1117] border-[#1F6FEB]'
+            : 'bg-[#0D1117] border-[#30363D] hover:border-[#8B949E]'
         }`}
       >
         <div className="flex items-center justify-between">
@@ -231,18 +224,18 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <div
               className={`w-9 h-9 rounded-lg border flex items-center justify-center ${
                 isDocker
-                  ? 'bg-blue-950 border-blue-800/50 text-blue-400'
-                  : 'bg-emerald-950 border-emerald-800/50 text-emerald-400'
+                  ? 'bg-[#1F6FEB]/10 border-[#1F6FEB]/30 text-[#58A6FF]'
+                  : 'bg-[#238636]/10 border-[#238636]/30 text-[#3FB950]'
               }`}
             >
               {isDocker ? <Container className="w-5 h-5" /> : <Terminal className="w-5 h-5" />}
             </div>
             <div>
-              <div className="font-semibold text-slate-200 text-sm flex items-center gap-2">
+              <div className="font-semibold text-[#F0F6FC] text-sm flex items-center gap-2">
                 {source.name}
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="w-2 h-2 rounded-full bg-[#3FB950]" />
               </div>
-              <div className="text-xs text-slate-400 font-mono mt-0.5">
+              <div className="text-xs text-[#8B949E] font-mono mt-0.5">
                 {source.host}:{source.port} | User: {creds.user || 'postgres'}
               </div>
             </div>
@@ -251,7 +244,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setResetDrawers((prev) => ({ ...prev, [source.id]: !prev[source.id] }))}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+              className="px-2.5 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#D29922] text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               title="Reset or fix forgotten password"
             >
               <Wrench className="w-3.5 h-3.5" />
@@ -261,11 +254,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <button
               disabled={isLoading}
               onClick={() => handleConnectDiscovered(source)}
-              className={`px-4 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer ${
-                isDocker
-                  ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
-                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-              }`}
+              className="px-4 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 bg-[#238636] hover:bg-[#2EA043] text-white transition-colors cursor-pointer"
             >
               {isLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
               Connect
@@ -274,40 +263,40 @@ export const SourceModal: React.FC<SourceModalProps> = ({
         </div>
 
         {/* Credentials Inputs (Password / Username / Database) */}
-        <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-2">
+        <div className="pt-2 border-t border-[#30363D] grid grid-cols-1 md:grid-cols-3 gap-2">
           <div>
-            <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">User</label>
+            <label className="block text-[10px] font-semibold uppercase text-[#8B949E] mb-1">User</label>
             <input
               type="text"
               value={creds.user}
               onChange={(e) => updateCreds(source.id, 'user', e.target.value)}
               placeholder="postgres"
-              className="w-full px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+              className="w-full px-2.5 py-1 rounded bg-[#161B22] border border-[#30363D] text-[#C9D1D9] text-xs font-mono focus:outline-none focus:border-[#58A6FF]"
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Password</label>
+            <label className="block text-[10px] font-semibold uppercase text-[#8B949E] mb-1">Password</label>
             <div className="relative">
               <input
                 type="password"
                 value={creds.pass}
                 onChange={(e) => updateCreds(source.id, 'pass', e.target.value)}
                 placeholder="Enter password..."
-                className="w-full pl-7 pr-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                className="w-full pl-7 pr-2.5 py-1 rounded bg-[#161B22] border border-[#30363D] text-[#C9D1D9] text-xs font-mono focus:outline-none focus:border-[#58A6FF]"
               />
-              <Key className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-1.5" />
+              <Key className="w-3.5 h-3.5 text-[#8B949E] absolute left-2 top-1.5" />
             </div>
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase text-slate-400 mb-1">Database</label>
+            <label className="block text-[10px] font-semibold uppercase text-[#8B949E] mb-1">Database</label>
             <input
               type="text"
               value={creds.db}
               onChange={(e) => updateCreds(source.id, 'db', e.target.value)}
               placeholder="postgres"
-              className="w-full px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+              className="w-full px-2.5 py-1 rounded bg-[#161B22] border border-[#30363D] text-[#C9D1D9] text-xs font-mono focus:outline-none focus:border-[#58A6FF]"
             />
           </div>
         </div>
@@ -315,15 +304,15 @@ export const SourceModal: React.FC<SourceModalProps> = ({
         {/* Auth Error & Auto-Reset Callout */}
         {cardError && (
           <div className="space-y-2">
-            <div className="p-2.5 rounded-lg bg-rose-950/70 border border-rose-800/80 text-rose-300 text-xs flex items-center justify-between">
+            <div className="p-2.5 rounded-lg bg-[#211213] border border-[#F85149]/40 text-[#FF7B72] text-xs flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-[#F85149] shrink-0" />
                 <span className="font-mono">{cardError}</span>
               </div>
               {isAuthFailed && !isResetOpen && (
                 <button
                   onClick={() => setResetDrawers((prev) => ({ ...prev, [source.id]: true }))}
-                  className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shrink-0 ml-2 shadow transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded bg-[#D29922] text-black font-bold text-[11px] shrink-0 ml-2 cursor-pointer"
                 >
                   Quick Sudo Reset
                 </button>
@@ -334,20 +323,20 @@ export const SourceModal: React.FC<SourceModalProps> = ({
 
         {/* Reset Password Helper Drawer */}
         {(isResetOpen || isAuthFailed) && (
-          <div className="p-3.5 rounded-xl bg-gradient-to-br from-amber-950/40 via-slate-900 to-slate-950 border border-amber-500/40 text-xs space-y-3 shadow-lg animate-fade-in">
-            <div className="font-bold text-amber-300 flex items-center justify-between">
+          <div className="p-3.5 rounded-xl bg-[#161B22] border border-[#D29922]/40 text-xs space-y-3">
+            <div className="font-bold text-[#D29922] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <ShieldAlert className="w-4 h-4 text-[#D29922]" />
                 <span>Fix Password via System Sudo / Docker Exec</span>
               </div>
-              <span className="text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800 px-2 py-0.5 rounded font-mono">
+              <span className="text-[10px] bg-[#0D1117] text-[#D29922] border border-[#D29922]/40 px-2 py-0.5 rounded font-mono">
                 `sudo -u postgres psql`
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] text-slate-300 font-semibold mb-1">
+                <label className="block text-[10px] text-[#8B949E] font-semibold mb-1">
                   1. System Sudo Password (OS Password)
                 </label>
                 <input
@@ -360,12 +349,12 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                     }))
                   }
                   placeholder="Enter Linux Sudo Password..."
-                  className="w-full px-3 py-1.5 rounded bg-slate-950 border border-amber-700/60 text-slate-100 font-mono text-xs focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-1.5 rounded bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] font-mono text-xs focus:outline-none focus:border-[#58A6FF]"
                 />
               </div>
 
               <div>
-                <label className="block text-[10px] text-slate-300 font-semibold mb-1">
+                <label className="block text-[10px] text-[#8B949E] font-semibold mb-1">
                   2. New PostgreSQL Password
                 </label>
                 <input
@@ -378,7 +367,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                     }))
                   }
                   placeholder="e.g. postgres"
-                  className="w-full px-3 py-1.5 rounded bg-slate-950 border border-amber-700/60 text-slate-100 font-mono text-xs focus:outline-none focus:border-amber-400"
+                  className="w-full px-3 py-1.5 rounded bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] font-mono text-xs focus:outline-none focus:border-[#58A6FF]"
                 />
               </div>
             </div>
@@ -387,7 +376,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
               <button
                 disabled={statusReset?.loading || isLoading}
                 onClick={() => handleResetPasswordAndAutoConnect(source)}
-                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+                className="w-full py-2 rounded-xl bg-[#238636] hover:bg-[#2EA043] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 {statusReset?.loading || isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -398,7 +387,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
               </button>
             </div>
 
-            {statusReset?.error && <div className="text-rose-400 font-mono text-[11px]">{statusReset.error}</div>}
+            {statusReset?.error && <div className="text-[#F85149] font-mono text-[11px]">{statusReset.error}</div>}
           </div>
         )}
       </div>
@@ -406,20 +395,20 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-2xl glass-modal rounded-2xl p-6 shadow-2xl border border-slate-700/50 flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn select-none">
+      <div className="w-full max-w-2xl bg-[#161B22] rounded-2xl p-6 border border-[#30363D] shadow-2xl flex flex-col max-h-[85vh]">
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-[#30363D]">
           <div className="flex items-center gap-3">
-            <Server className="w-6 h-6 text-cyan-400" />
-            <h2 className="text-xl font-bold text-slate-100">Select PostgreSQL Source</h2>
+            <Server className="w-5 h-5 text-[#58A6FF]" />
+            <h2 className="text-lg font-bold text-[#F0F6FC]">Select PostgreSQL Source</h2>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={onRefreshDiscovery}
               disabled={isRefreshingDiscovery}
-              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg bg-[#21262D] hover:bg-[#30363D] border border-[#30363D] text-[#58A6FF] text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
               title="Rescan Docker socket and local ports for new containers"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingDiscovery ? 'animate-spin' : ''}`} />
@@ -428,7 +417,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
 
             <button
               onClick={onClose}
-              className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1 rounded-lg text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262D] transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -436,23 +425,23 @@ export const SourceModal: React.FC<SourceModalProps> = ({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex gap-2 my-4 p-1 bg-slate-900/80 rounded-xl border border-slate-800">
+        <div className="flex gap-2 my-4 p-1 bg-[#0D1117] rounded-xl border border-[#30363D]">
           <button
             onClick={() => setTab('discovered')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               tab === 'discovered'
-                ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1F6FEB] text-white font-semibold'
+                : 'text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
           >
             Auto-Discovered ({dockerSources.length + localSources.length})
           </button>
           <button
             onClick={() => setTab('manual')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               tab === 'manual'
-                ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#1F6FEB] text-white font-semibold'
+                : 'text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
           >
             Manual Connection
@@ -460,8 +449,8 @@ export const SourceModal: React.FC<SourceModalProps> = ({
         </div>
 
         {generalError && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-950/60 border border-rose-800/60 text-rose-300 text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="mb-4 p-3 rounded-lg bg-[#211213] border border-[#F85149]/40 text-[#FF7B72] text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-[#F85149] shrink-0" />
             <span>{generalError}</span>
           </div>
         )}
@@ -472,7 +461,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <>
               {/* Docker Sources */}
               <div>
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[#58A6FF] mb-3">
                   <div className="flex items-center gap-2">
                     <Container className="w-4 h-4" />
                     <span>Docker Containers ({dockerSources.length})</span>
@@ -481,7 +470,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                   <button
                     onClick={onRefreshDiscovery}
                     disabled={isRefreshingDiscovery}
-                    className="text-[11px] text-cyan-300 hover:text-cyan-200 underline font-normal flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] text-[#58A6FF] hover:underline font-normal flex items-center gap-1 cursor-pointer"
                   >
                     <RefreshCw className={`w-3 h-3 ${isRefreshingDiscovery ? 'animate-spin' : ''}`} />
                     <span>{isRefreshingDiscovery ? 'Scanning...' : 'Scan Now'}</span>
@@ -489,7 +478,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 </div>
 
                 {dockerSources.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-500 text-sm text-center">
+                  <div className="p-4 rounded-xl bg-[#0D1117] border border-[#30363D] text-[#8B949E] text-xs text-center">
                     No running PostgreSQL containers detected via Docker Socket.
                   </div>
                 ) : (
@@ -501,13 +490,13 @@ export const SourceModal: React.FC<SourceModalProps> = ({
 
               {/* Local Host Sources */}
               <div>
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400 mb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#3FB950] mb-3">
                   <Terminal className="w-4 h-4" />
                   Local System Instances ({localSources.length})
                 </div>
 
                 {localSources.length === 0 ? (
-                  <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-slate-500 text-sm text-center">
+                  <div className="p-4 rounded-xl bg-[#0D1117] border border-[#30363D] text-[#8B949E] text-xs text-center">
                     No active PostgreSQL service detected on ports 5432, 5433, 5434.
                   </div>
                 ) : (
@@ -521,22 +510,22 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <form onSubmit={handleConnectManual} className="space-y-4 py-2">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Host / Address</label>
+                  <label className="block text-xs font-semibold text-[#8B949E] mb-1">Host / Address</label>
                   <input
                     type="text"
                     value={formData.host}
                     onChange={(e) => setFormData({ ...formData, host: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Port</label>
+                  <label className="block text-xs font-semibold text-[#8B949E] mb-1">Port</label>
                   <input
                     type="number"
                     value={formData.port}
                     onChange={(e) => setFormData({ ...formData, port: Number(e.target.value) })}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
                     required
                   />
                 </div>
@@ -544,34 +533,34 @@ export const SourceModal: React.FC<SourceModalProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Username</label>
+                  <label className="block text-xs font-semibold text-[#8B949E] mb-1">Username</label>
                   <input
                     type="text"
                     value={formData.user}
                     onChange={(e) => setFormData({ ...formData, user: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">Password</label>
+                  <label className="block text-xs font-semibold text-[#8B949E] mb-1">Password</label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     placeholder="Enter password..."
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1">Database Name</label>
+                <label className="block text-xs font-semibold text-[#8B949E] mb-1">Database Name</label>
                 <input
                   type="text"
                   value={formData.database}
                   onChange={(e) => setFormData({ ...formData, database: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-sm focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 rounded-lg bg-[#0D1117] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
                   required
                 />
               </div>
@@ -580,7 +569,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 <button
                   type="submit"
                   disabled={loadingId === 'manual'}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-2.5 rounded-xl bg-[#238636] hover:bg-[#2EA043] text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {loadingId === 'manual' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                   Save & Connect to Database

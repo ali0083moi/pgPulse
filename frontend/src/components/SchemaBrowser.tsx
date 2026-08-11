@@ -1,9 +1,21 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ReactFlow, Controls, Background, Node, Edge, MarkerType, Handle, Position, useNodesState, useEdgesState } from '@xyflow/react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Node,
+  Edge,
+  MarkerType,
+  Handle,
+  Position,
+  useNodesState,
+  useEdgesState,
+} from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
-import { SchemaTreeResponse, TableInfo } from '../types';
-import { Table, Key, Network, Eye, Layers, Info, Wand2, ArrowDownCircle, ArrowRightCircle, Grid, Plus } from 'lucide-react';
+import { Layers, Network, Table as TableIcon, Key, ArrowRightCircle, ArrowDownCircle, Grid, Search, Plus, Wand2 } from 'lucide-react';
+import { SchemaTreeResponse } from '../types';
 
 interface SchemaBrowserProps {
   schemaData: SchemaTreeResponse | null;
@@ -11,164 +23,246 @@ interface SchemaBrowserProps {
   onOpenCreateTableModal?: () => void;
 }
 
-// Custom ReactFlow Node for ERD Tables with clean top/bottom/left/right Handles
-const ERDTableNode: React.FC<{ data: { table: TableInfo; onSelectTable: (name: string) => void } }> = ({ data }) => {
-  const tbl = data.table;
+// Custom ERD Node rendering table box with ReactFlow Handles
+const TableNode = ({ data }: { data: any }) => {
   return (
-    <div className="w-68 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl overflow-hidden font-sans text-xs hover:border-cyan-500/80 transition-all">
-      <Handle type="target" position={Position.Top} id="top-target" className="!bg-cyan-400 !w-3 !h-3 !-top-1.5" />
-      <Handle type="target" position={Position.Left} id="left-target" className="!bg-cyan-400 !w-3 !h-3 !-left-1.5" />
+    <div className="w-72 bg-[#161B22] border border-[#30363D] rounded-xl shadow-xl overflow-hidden font-sans relative group hover:border-[#58A6FF] transition-all">
+      {/* Top Handle (Incoming FK) */}
+      <Handle
+        type="target"
+        id="top"
+        position={Position.Top}
+        className="w-3 h-3 !bg-[#58A6FF] !border-2 !border-[#0D1117] transition-transform group-hover:scale-125"
+      />
+      {/* Left Handle */}
+      <Handle
+        type="target"
+        id="left"
+        position={Position.Left}
+        className="w-3 h-3 !bg-[#58A6FF] !border-2 !border-[#0D1117] transition-transform group-hover:scale-125"
+      />
 
-      <div className="bg-slate-800/90 px-3 py-2 border-b border-slate-700 flex items-center justify-between font-bold text-slate-100">
+      <div className="px-3.5 py-2 bg-[#0D1117] border-b border-[#30363D] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Table className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-          <span className="truncate max-w-[130px]">{tbl.name}</span>
+          <TableIcon className="w-4 h-4 text-[#58A6FF]" />
+          <span className="font-bold text-xs text-[#F0F6FC] font-mono truncate">{data.label}</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-mono font-normal shrink-0">{tbl.columns.length} cols</span>
+        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+          {data.columns.length} cols
+        </span>
       </div>
 
-      <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
-        {tbl.columns.map((c) => (
-          <div key={c.name} className="flex items-center justify-between text-[11px] text-slate-300 hover:bg-slate-800/60 px-1.5 py-0.5 rounded">
-            <div className="flex items-center gap-1.5 font-mono truncate">
-              {c.isPrimaryKey ? (
-                <Key className="w-3 h-3 text-amber-400 shrink-0" />
+      <div className="p-2 space-y-1 font-mono text-xs">
+        {data.columns.map((col: any) => (
+          <div
+            key={col.name}
+            className="flex items-center justify-between px-2 py-1 rounded bg-[#0D1117] hover:bg-[#21262D] text-[11px] text-[#C9D1D9] transition-colors"
+          >
+            <div className="flex items-center gap-1.5 truncate">
+              {col.isPk ? (
+                <Key className="w-3 h-3 text-[#D29922] shrink-0" />
+              ) : col.isFk ? (
+                <span className="text-[#58A6FF] font-bold text-[10px] shrink-0">FK</span>
               ) : (
-                <span className="w-3 text-center text-slate-600">•</span>
+                <span className="w-3 h-3 block shrink-0" />
               )}
-              <span className={c.isPrimaryKey ? 'font-bold text-amber-300' : ''}>{c.name}</span>
+              <span className={`truncate ${col.isPk ? 'font-bold text-[#F0F6FC]' : ''}`}>{col.name}</span>
             </div>
-            <span className="text-[10px] text-slate-500 font-mono pl-1 shrink-0">{c.type}</span>
+            <span className="text-[10px] text-[#8B949E] ml-2 shrink-0">{col.type}</span>
           </div>
         ))}
       </div>
 
-      <Handle type="source" position={Position.Bottom} id="bottom-source" className="!bg-cyan-400 !w-3 !h-3 !-bottom-1.5" />
-      <Handle type="source" position={Position.Right} id="right-source" className="!bg-cyan-400 !w-3 !h-3 !-right-1.5" />
+      {/* Bottom Handle (Outgoing FK) */}
+      <Handle
+        type="source"
+        id="bottom"
+        position={Position.Bottom}
+        className="w-3 h-3 !bg-[#58A6FF] !border-2 !border-[#0D1117] transition-transform group-hover:scale-125"
+      />
+      {/* Right Handle */}
+      <Handle
+        type="source"
+        id="right"
+        position={Position.Right}
+        className="w-3 h-3 !bg-[#58A6FF] !border-2 !border-[#0D1117] transition-transform group-hover:scale-125"
+      />
     </div>
   );
 };
 
-// Dagre Layout Algorithm helper
-const getLayoutedElements = (rawNodes: Node[], rawEdges: Edge[], direction: 'TB' | 'LR' | 'GRID' = 'TB') => {
+const nodeTypes = {
+  tableNode: TableNode,
+};
+
+// Advanced Dagre Layout Algorithm with dynamic node heights & smoothstep edges
+const getLayoutedElements = (nodes: Node[], edges: Edge[], direction: 'TB' | 'LR' | 'GRID') => {
+  if (nodes.length === 0) return { nodes: [], edges: [] };
+
   if (direction === 'GRID') {
-    const colsPerRow = Math.ceil(Math.sqrt(rawNodes.length)) || 3;
-    const gridNodes = rawNodes.map((node, idx) => {
-      const row = Math.floor(idx / colsPerRow);
-      const col = idx % colsPerRow;
+    const gridCols = Math.max(2, Math.ceil(Math.sqrt(nodes.length)));
+    const nodeWidth = 300;
+
+    const layoutedNodes = nodes.map((node, index) => {
+      const col = index % gridCols;
+      const row = Math.floor(index / gridCols);
+      const colsCount = (node.data?.columns as any[])?.length || 4;
+      const calcHeight = Math.max(120, 45 + colsCount * 28 + 15);
+
       return {
         ...node,
-        position: { x: col * 320, y: row * 260 },
+        targetPosition: Position.Top,
+        sourcePosition: Position.Bottom,
+        position: {
+          x: col * (nodeWidth + 70),
+          y: row * (calcHeight + 90),
+        },
       };
     });
-    return { nodes: gridNodes, edges: rawEdges };
+
+    return { nodes: layoutedNodes, edges };
   }
 
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   const isHorizontal = direction === 'LR';
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 80, ranksep: 120 });
-
-  rawNodes.forEach((node) => {
-    const tbl = (node.data as any)?.table as TableInfo;
-    const nodeWidth = 280;
-    const nodeHeight = Math.min(260, 50 + (tbl?.columns?.length || 0) * 24);
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  dagreGraph.setGraph({
+    rankdir: direction,
+    ranksep: 120,
+    nodesep: 80,
+    marginx: 40,
+    marginy: 40,
   });
 
-  rawEdges.forEach((edge) => {
+  nodes.forEach((node) => {
+    const colsCount = (node.data?.columns as any[])?.length || 4;
+    const calcHeight = Math.max(120, 45 + colsCount * 28 + 15);
+    dagreGraph.setNode(node.id, { width: 300, height: calcHeight });
+  });
+
+  edges.forEach((edge) => {
     dagreGraph.setEdge(edge.source, edge.target);
   });
 
   dagre.layout(dagreGraph);
 
-  const layoutedNodes = rawNodes.map((node) => {
+  const layoutedNodes = nodes.map((node) => {
     const nodeWithPosition = dagreGraph.node(node.id);
-    const tbl = (node.data as any)?.table as TableInfo;
-    const nodeWidth = 280;
-    const nodeHeight = Math.min(260, 50 + (tbl?.columns?.length || 0) * 24);
+    const colsCount = (node.data?.columns as any[])?.length || 4;
+    const calcHeight = Math.max(120, 45 + colsCount * 28 + 15);
 
     return {
       ...node,
       targetPosition: isHorizontal ? Position.Left : Position.Top,
       sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
       position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
+        x: nodeWithPosition.x - 150,
+        y: nodeWithPosition.y - calcHeight / 2,
       },
     };
   });
 
-  return { nodes: layoutedNodes, edges: rawEdges };
+  return { nodes: layoutedNodes, edges };
 };
 
 export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSelectTable, onOpenCreateTableModal }) => {
-  const [viewMode, setViewMode] = useState<'tree' | 'erd'>('erd');
   const [selectedSchema, setSelectedSchema] = useState<string>('public');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'erd' | 'tree'>('erd');
   const [layoutDir, setLayoutDir] = useState<'TB' | 'LR' | 'GRID'>('TB');
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
-  const nodeTypes = useMemo(() => ({ erdTable: ERDTableNode }), []);
-
-  useEffect(() => {
-    if (schemaData?.schemas && schemaData.schemas.length > 0) {
-      if (!schemaData.schemas.includes(selectedSchema)) {
-        setSelectedSchema(schemaData.schemas.includes('public') ? 'public' : schemaData.schemas[0]);
-      }
-    }
-  }, [schemaData]);
-
   const filteredTables = useMemo(() => {
     if (!schemaData) return [];
-    return schemaData.tables.filter((t) => t.schema === selectedSchema);
-  }, [schemaData, selectedSchema]);
+    return schemaData.tables.filter((t) => {
+      const matchSchema = !selectedSchema || t.schema === selectedSchema;
+      const matchSearch = !searchTerm || t.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchSchema && matchSearch;
+    });
+  }, [schemaData, selectedSchema, searchTerm]);
 
-  // Generate and layout nodes/edges
+  // Update Graph Layout
   const updateGraphLayout = useCallback(
-    (dir: 'TB' | 'LR' | 'GRID') => {
-      if (!schemaData || schemaData.tables.length === 0) {
-        setNodes([]);
-        setEdges([]);
-        return;
-      }
+    (direction: 'TB' | 'LR' | 'GRID') => {
+      if (!schemaData) return;
 
-      const tablesToRender = schemaData.tables.filter((t) => t.schema === selectedSchema);
+      const tables = schemaData.tables.filter((t) => !selectedSchema || t.schema === selectedSchema);
 
-      const rawNodes: Node[] = tablesToRender.map((tbl) => ({
-        id: tbl.name,
-        type: 'erdTable',
-        position: { x: 0, y: 0 },
-        style: { background: 'transparent', border: 'none', padding: 0 },
-        data: { table: tbl, onSelectTable },
-      }));
+      const rawNodes: Node[] = tables.map((tbl) => {
+        const pkCols = new Set(tbl.columns.filter((c) => c.isPrimaryKey).map((c) => c.name));
+        
+        // Find foreign keys for this table
+        const fkCols = new Set(
+          schemaData.foreignKeys
+            .filter((fk) => {
+              const srcTbl = (fk.fromTable || '').replace(/^.*?\./, '').replace(/"/g, '');
+              return srcTbl === tbl.name;
+            })
+            .map((fk) => fk.fromColumn)
+        );
 
-      const rawEdges: Edge[] = [];
-      schemaData.foreignKeys.forEach((fk) => {
-        if (
-          tablesToRender.some((t) => t.name === fk.fromTable) &&
-          tablesToRender.some((t) => t.name === fk.toTable)
-        ) {
-          rawEdges.push({
-            id: fk.id,
-            source: fk.fromTable,
-            target: fk.toTable,
-            type: 'smoothstep',
-            animated: true,
-            style: { stroke: '#06b6d4', strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: '#06b6d4',
-            },
-          });
-        }
+        const colsFormatted = tbl.columns.map((c) => ({
+          name: c.name,
+          type: c.type,
+          isPk: c.isPrimaryKey || pkCols.has(c.name),
+          isFk: fkCols.has(c.name),
+        }));
+
+        return {
+          id: tbl.name,
+          type: 'tableNode',
+          position: { x: 0, y: 0 },
+          data: {
+            label: tbl.name,
+            columns: colsFormatted,
+            onSelect: () => onSelectTable(tbl.name),
+          },
+        };
       });
 
-      const layouted = getLayoutedElements(rawNodes, rawEdges, dir);
-      setNodes(layouted.nodes);
-      setEdges(layouted.edges);
+      const isHorizontal = direction === 'LR';
+
+      const rawEdges: Edge[] = schemaData.foreignKeys
+        .map((fk, idx) => {
+          const fromTbl = (fk.fromTable || '').replace(/^.*?\./, '').replace(/"/g, '');
+          const toTbl = (fk.toTable || '').replace(/^.*?\./, '').replace(/"/g, '');
+
+          const hasSource = tables.some((t) => t.name === fromTbl);
+          const hasTarget = tables.some((t) => t.name === toTbl);
+
+          if (!hasSource || !hasTarget) return null;
+
+          return {
+            id: `e-${fromTbl}-${toTbl}-${idx}`,
+            source: fromTbl,
+            target: toTbl,
+            type: 'smoothstep',
+            pathOptions: { borderRadius: 16, offset: 20 },
+            sourceHandle: isHorizontal ? 'right' : 'bottom',
+            targetHandle: isHorizontal ? 'left' : 'top',
+            animated: true,
+            label: `${fk.fromColumn} ➔ ${fk.toColumn}`,
+            labelStyle: { fill: '#58A6FF', fontSize: 10, fontFamily: 'Fira Code, monospace', fontWeight: 600 },
+            labelBgStyle: { fill: '#0D1117', fillOpacity: 0.9, rx: 6, ry: 6 },
+            labelBgPadding: [6, 4] as [number, number],
+            style: { stroke: '#58A6FF', strokeWidth: 2 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              color: '#58A6FF',
+              width: 16,
+              height: 16,
+            },
+          };
+        })
+        .filter(Boolean) as Edge[];
+
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(rawNodes, rawEdges, direction);
+
+      setNodes(layoutedNodes);
+      setEdges(layoutedEdges);
     },
     [schemaData, selectedSchema, onSelectTable, setNodes, setEdges]
   );
@@ -179,24 +273,24 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
 
   if (!schemaData) {
     return (
-      <div className="flex-1 flex items-center justify-center text-slate-500 text-sm">
+      <div className="flex-1 flex items-center justify-center text-[#8B949E] text-sm">
         Connect to a database to inspect Schema and ERD diagram.
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#0B0F19]">
+    <div className="flex-1 flex flex-col h-full bg-[#0D1117] select-none">
       {/* Top Header Toolbar */}
-      <div className="h-12 border-b border-slate-800 bg-slate-900/60 px-6 flex items-center justify-between shrink-0">
+      <div className="h-12 border-b border-[#30363D] bg-[#161B22] px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-cyan-400" />
-            <span className="text-xs font-semibold text-slate-400 uppercase">Schema:</span>
+            <Layers className="w-4 h-4 text-[#58A6FF]" />
+            <span className="text-xs font-semibold text-[#8B949E] uppercase">Schema:</span>
             <select
               value={selectedSchema}
               onChange={(e) => setSelectedSchema(e.target.value)}
-              className="px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs font-medium text-slate-200 focus:outline-none focus:border-cyan-500"
+              className="px-2.5 py-1 rounded-lg bg-[#0D1117] border border-[#30363D] text-xs font-medium text-[#C9D1D9] focus:outline-none focus:border-[#58A6FF] cursor-pointer"
             >
               {schemaData.schemas.map((s) => (
                 <option key={s} value={s}>
@@ -208,24 +302,27 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
             {onOpenCreateTableModal && (
               <button
                 onClick={onOpenCreateTableModal}
-                className="px-3 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ml-2"
+                className="px-3 py-1 rounded-lg bg-[#1F6FEB] hover:bg-[#388BFD] text-white text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ml-2"
                 title="Visually create a new table"
               >
-                <Plus className="w-3.5 h-3.5 text-cyan-400 stroke-[3]" />
-                <span>+ Create Table</span>
+                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <span>Create Table</span>
               </button>
             )}
           </div>
 
           {/* Auto-Layout Controls for ERD */}
           {viewMode === 'erd' && filteredTables.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-slate-950 px-2 py-1 rounded-lg border border-slate-800 text-xs">
-              <Wand2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="text-slate-400 font-semibold mr-1">Layout:</span>
+            <div className="flex items-center gap-1.5 bg-[#0D1117] px-2 py-1 rounded-lg border border-[#30363D] text-xs">
+              <Wand2 className="w-3.5 h-3.5 text-[#D29922] shrink-0" />
+              <span className="text-[#8B949E] font-semibold mr-1">Layout:</span>
               <button
-                onClick={() => setLayoutDir('TB')}
-                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors ${
-                  layoutDir === 'TB' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+                onClick={() => {
+                  setLayoutDir('TB');
+                  updateGraphLayout('TB');
+                }}
+                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors cursor-pointer ${
+                  layoutDir === 'TB' ? 'bg-[#1F6FEB] text-white font-bold' : 'text-[#8B949E] hover:text-[#C9D1D9]'
                 }`}
                 title="Hierarchical Top-to-Bottom Layout"
               >
@@ -234,9 +331,12 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
               </button>
 
               <button
-                onClick={() => setLayoutDir('LR')}
-                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors ${
-                  layoutDir === 'LR' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+                onClick={() => {
+                  setLayoutDir('LR');
+                  updateGraphLayout('LR');
+                }}
+                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors cursor-pointer ${
+                  layoutDir === 'LR' ? 'bg-[#1F6FEB] text-white font-bold' : 'text-[#8B949E] hover:text-[#C9D1D9]'
                 }`}
                 title="Horizontal Left-to-Right Flow"
               >
@@ -245,9 +345,12 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
               </button>
 
               <button
-                onClick={() => setLayoutDir('GRID')}
-                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors ${
-                  layoutDir === 'GRID' ? 'bg-cyan-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-slate-200'
+                onClick={() => {
+                  setLayoutDir('GRID');
+                  updateGraphLayout('GRID');
+                }}
+                className={`p-1 rounded flex items-center gap-1 font-medium transition-colors cursor-pointer ${
+                  layoutDir === 'GRID' ? 'bg-[#1F6FEB] text-white font-bold' : 'text-[#8B949E] hover:text-[#C9D1D9]'
                 }`}
                 title="Compact Grid Layout"
               >
@@ -259,40 +362,36 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
         </div>
 
         {/* View Switcher */}
-        <div className="flex gap-1 p-1 bg-slate-950 rounded-lg border border-slate-800">
+        <div className="flex gap-1 p-1 bg-[#0D1117] rounded-lg border border-[#30363D]">
           <button
             onClick={() => setViewMode('erd')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
-              viewMode === 'erd' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === 'erd'
+                ? 'bg-[#1F6FEB] text-white font-semibold'
+                : 'text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
           >
             <Network className="w-3.5 h-3.5" />
-            Interactive ERD Diagram
+            Visual ERD Diagram
           </button>
           <button
             onClick={() => setViewMode('tree')}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors ${
-              viewMode === 'tree' ? 'bg-cyan-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === 'tree'
+                ? 'bg-[#1F6FEB] text-white font-semibold'
+                : 'text-[#8B949E] hover:text-[#C9D1D9]'
             }`}
           >
-            <Table className="w-3.5 h-3.5" />
-            Table Schema Details
+            <TableIcon className="w-3.5 h-3.5" />
+            Table List View
           </button>
         </div>
       </div>
 
-      {/* Main View Area */}
+      {/* Main Workspace Body */}
       <div className="flex-1 relative overflow-hidden">
-        {filteredTables.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center p-8 text-center space-y-3">
-            <Info className="w-8 h-8 text-cyan-400 opacity-60" />
-            <div className="text-slate-300 font-semibold text-sm">No tables found in schema '{selectedSchema}'.</div>
-            <p className="text-xs text-slate-500 max-w-md">
-              Use the <span className="text-cyan-400 font-bold font-mono">DB:</span> dropdown in the top header bar to switch to <span className="font-mono text-emerald-400">ecommerce_db</span>, <span className="font-mono text-emerald-400">hospital_db</span>, or <span className="font-mono text-emerald-400">school_db</span>!
-            </p>
-          </div>
-        ) : viewMode === 'erd' ? (
-          <div className="w-full h-full bg-[#0B0F19]">
+        {viewMode === 'erd' ? (
+          <div className="w-full h-full bg-[#0D1117]">
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -300,41 +399,53 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
               onEdgesChange={onEdgesChange}
               nodeTypes={nodeTypes}
               fitView
+              attributionPosition="bottom-right"
             >
-              <Background color="#1e293b" gap={16} size={1} />
-              <Controls className="bg-slate-900 border-slate-800 text-slate-200" />
+              <Background color="#30363D" gap={24} size={1} />
+              <Controls className="bg-[#161B22] border-[#30363D] fill-[#C9D1D9]" />
+              <MiniMap
+                nodeColor={() => '#161B22'}
+                maskColor="rgba(13, 17, 23, 0.7)"
+                className="bg-[#161B22] border-[#30363D]"
+              />
             </ReactFlow>
           </div>
         ) : (
-          <div className="p-6 h-full overflow-y-auto space-y-6">
+          <div className="p-6 h-full overflow-y-auto space-y-4">
+            <div className="max-w-md relative">
+              <Search className="w-4 h-4 text-[#8B949E] absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search tables by name..."
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[#161B22] border border-[#30363D] text-[#C9D1D9] text-xs focus:outline-none focus:border-[#58A6FF]"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredTables.map((tbl) => (
                 <div
                   key={tbl.name}
-                  className="p-4 rounded-xl glass-panel border border-slate-800 hover:border-cyan-500/50 transition-all shadow-lg space-y-3"
+                  onClick={() => onSelectTable(tbl.name)}
+                  className="p-4 rounded-xl bg-[#161B22] border border-[#30363D] hover:border-[#58A6FF] transition-all cursor-pointer space-y-3 group"
                 >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="flex items-center gap-2 font-bold text-slate-200 text-sm">
-                      <Table className="w-4 h-4 text-cyan-400" />
-                      <span>{tbl.name}</span>
+                  <div className="flex items-center justify-between border-b border-[#30363D] pb-2">
+                    <div className="flex items-center gap-2">
+                      <TableIcon className="w-4 h-4 text-[#58A6FF] group-hover:scale-110 transition-transform" />
+                      <span className="font-bold text-sm text-[#F0F6FC] font-mono">{tbl.name}</span>
                     </div>
-                    <button
-                      onClick={() => onSelectTable(tbl.name)}
-                      className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs flex items-center gap-1 transition-colors"
-                    >
-                      <Eye className="w-3 h-3" />
-                      Query Table
-                    </button>
+                    <span className="text-xs text-[#8B949E] font-mono">{tbl.columns.length} columns</span>
                   </div>
 
-                  <div className="space-y-1.5 max-h-60 overflow-y-auto">
-                    {tbl.columns.map((c) => (
-                      <div key={c.name} className="flex items-center justify-between text-xs py-1 px-2 rounded bg-slate-900/60 font-mono">
-                        <div className="flex items-center gap-2">
-                          {c.isPrimaryKey && <Key className="w-3 h-3 text-amber-400 shrink-0" />}
-                          <span className={c.isPrimaryKey ? 'font-bold text-amber-300' : ''}>{c.name}</span>
-                        </div>
-                        <span className="text-[10px] text-slate-500">{c.type}</span>
+                  <div className="space-y-1 max-h-36 overflow-y-auto text-xs font-mono">
+                    {tbl.columns.map((col) => (
+                      <div key={col.name} className="flex items-center justify-between text-[#8B949E]">
+                        <span className={`truncate ${col.isPrimaryKey ? 'text-[#D29922] font-bold' : ''}`}>
+                          {col.isPrimaryKey && '🔑 '}
+                          {col.name}
+                        </span>
+                        <span className="text-[10px] text-[#484F58]">{col.type}</span>
                       </div>
                     ))}
                   </div>
