@@ -1,6 +1,7 @@
 import { executeQuery } from './postgres';
 import { getDatabases } from './schema';
-import { exec } from 'child_process';
+import { discoverDockerSources } from './discovery';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 
 const execAsync = promisify(exec);
@@ -142,6 +143,30 @@ export async function toggleDatabaseAccess(
   return { success: true, message: `Privileges updated for '${data.username}'.` };
 }
 
+function runCommandWithStdin(command: string, args: string[], stdinInput: string): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { shell: false });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (d) => (stdout += d.toString()));
+    child.stderr.on('data', (d) => (stderr += d.toString()));
+
+    child.on('close', (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        reject(new Error(stderr || stdout || `Process exited with code ${code}`));
+      }
+    });
+
+    child.on('error', (err) => reject(err));
+
+    child.stdin.write(stdinInput);
+    child.stdin.end();
+  });
+}
+
 export async function resetSystemOrContainerPassword(data: {
   containerId?: string;
   port?: number;
@@ -152,11 +177,31 @@ export async function resetSystemOrContainerPassword(data: {
   const userEsc = (data.username || 'postgres').replace(/"/g, '""');
   const passEsc = (data.newPassword || 'postgres').replace(/'/g, "''");
 
-  // 1. Docker exec reset
-  if (data.containerId) {
+  let targetContainerId = data.containerId;
+
+  // Auto-detect container by port if containerId was not supplied
+  if (!targetContainerId && data.port) {
+    const dockerSources = await discoverDockerSources();
+    const match = dockerSources.find((s) => s.port === data.port);
+    if (match && match.containerId) {
+      targetContainerId = match.containerId;
+    }
+  }
+
+  const sqlInput = `DO $$ BEGIN IF EXISTS (SELECT FROM pg_roles WHERE rolname = '${userEsc}') THEN ALTER USER "${userEsc}" WITH PASSWORD '${passEsc}'; ELSE CREATE ROLE "${userEsc}" WITH LOGIN SUPERUSER PASSWORD '${passEsc}'; END IF; END $$;`;
+
+  // 1. Docker exec reset using STDIN to avoid escaping bugs
+  if (targetContainerId) {
     try {
-      const cmd = `docker exec ${data.containerId} psql -U ${userEsc} -c "ALTER USER \\"${userEsc}\\" WITH PASSWORD '${passEsc}';"`;
-      const { stdout, stderr } = await execAsync(cmd);
+      const args = [
+        'exec',
+        '-i',
+        targetContainerId,
+        'sh',
+        '-c',
+        'psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postgres}"',
+      ];
+      const { stdout, stderr } = await runCommandWithStdin('docker', args, sqlInput);
       return { success: true, message: `Docker password reset successfully: ${stdout || stderr}` };
     } catch (err: any) {
       return { success: false, error: err.message || 'Docker exec password reset failed' };
@@ -182,6 +227,18 @@ export async function resetSystemOrContainerPassword(data: {
     if (!data.sudoPassword) {
       return { success: false, requiresSudo: true, error: 'Sudo password required for system password reset.' };
     }
-    return { success: false, error: errMsg || 'Local system password reset failed' };
+
+    // Try TCP fallback with -h 127.0.0.1
+    try {
+      let tcpCmd = `sudo -n -u postgres psql -h 127.0.0.1 -p ${port} -U ${userEsc} -c "ALTER USER \\"${userEsc}\\" WITH PASSWORD '${passEsc}';"`;
+      if (data.sudoPassword) {
+        const sudoEsc = data.sudoPassword.replace(/'/g, "'\\''");
+        tcpCmd = `echo '${sudoEsc}' | sudo -S -p '' -u postgres psql -h 127.0.0.1 -p ${port} -U ${userEsc} -c "ALTER USER \\"${userEsc}\\" WITH PASSWORD '${passEsc}';"`;
+      }
+      const { stdout, stderr } = await execAsync(tcpCmd);
+      return { success: true, message: `Local password reset successfully via TCP: ${stdout || stderr}` };
+    } catch (e: any) {
+      return { success: false, error: errMsg || 'Local system password reset failed' };
+    }
   }
 }

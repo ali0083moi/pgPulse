@@ -51,7 +51,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
     const existing = sourceCredentials[source.id];
     return {
       user: existing?.user ?? (source.user || 'postgres'),
-      pass: existing?.pass ?? '',
+      pass: existing?.pass ?? (source.defaultPassword || ''),
       db: existing?.db ?? (source.database || 'postgres'),
     };
   };

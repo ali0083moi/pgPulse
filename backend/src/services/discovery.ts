@@ -11,6 +11,7 @@ export interface DiscoveredSource {
   status: 'running' | 'available' | 'unknown';
   user?: string;
   database?: string;
+  defaultPassword?: string;
 }
 
 const isWindows = process.platform === 'win32';
@@ -42,6 +43,23 @@ export async function discoverDockerSources(): Promise<DiscoveredSource[]> {
           c.Ports.find((p) => p.PublicPort)?.PublicPort || 5432;
         const containerName = c.Names[0]?.replace(/^\//, '') || 'pg-container';
 
+        // Inspect container environment variables for POSTGRES_USER, POSTGRES_DB, POSTGRES_PASSWORD
+        let user = 'postgres';
+        let database = 'postgres';
+        let defaultPassword = '';
+
+        try {
+          const details = await docker.getContainer(c.Id).inspect();
+          const envArray = details.Config?.Env || [];
+          for (const item of envArray) {
+            if (item.startsWith('POSTGRES_USER=')) user = item.split('=')[1] || 'postgres';
+            if (item.startsWith('POSTGRES_DB=')) database = item.split('=')[1] || 'postgres';
+            if (item.startsWith('POSTGRES_PASSWORD=')) defaultPassword = item.split('=')[1] || '';
+          }
+        } catch (e) {
+          // fallback to defaults
+        }
+
         sources.push({
           id: `docker-${c.Id.substring(0, 12)}`,
           name: `Docker: ${containerName} (${c.Image.split(':')[0]})`,
@@ -50,8 +68,9 @@ export async function discoverDockerSources(): Promise<DiscoveredSource[]> {
           port: publicPort,
           containerId: c.Id,
           status: 'running',
-          user: 'postgres',
-          database: 'postgres'
+          user,
+          database,
+          defaultPassword,
         });
       }
     }

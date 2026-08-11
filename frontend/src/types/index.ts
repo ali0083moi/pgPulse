@@ -8,6 +8,7 @@ export interface DiscoveredSource {
   status: 'running' | 'available' | 'unknown';
   user?: string;
   database?: string;
+  defaultPassword?: string;
 }
 
 export interface ColumnInfo {
