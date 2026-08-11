@@ -8,13 +8,18 @@ import { CreateDatabaseModal } from './components/CreateDatabaseModal';
 import { CreateTableModal } from './components/CreateTableModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DiscoveredSource, SchemaTreeResponse } from './types';
-import { fetchDiscovery, fetchSchema, switchDatabase } from './services/api';
+import { fetchDiscovery, fetchSchema, switchDatabase, connectSource } from './services/api';
+
+const STORAGE_KEY_ACTIVE_SOURCE = 'pgpulse_active_source';
+const STORAGE_KEY_ACTIVE_DB = 'pgpulse_active_db';
+const STORAGE_KEY_CREDS = 'pgpulse_source_credentials';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'editor' | 'schema' | 'users'>('editor');
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [isCreateDbModalOpen, setIsCreateDbModalOpen] = useState(false);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
+  const [isRefreshingDiscovery, setIsRefreshingDiscovery] = useState(false);
 
   // Discovered Sources
   const [dockerSources, setDockerSources] = useState<DiscoveredSource[]>([]);
@@ -25,20 +30,59 @@ export const App: React.FC = () => {
   // Schema & Databases
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [schemaData, setSchemaData] = useState<SchemaTreeResponse | null>(null);
-  const [activeDb, setActiveDb] = useState<string>('postgres');
+  const [activeDb, setActiveDb] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_ACTIVE_DB) || 'postgres';
+  });
 
-  const loadDiscovery = async () => {
+  const loadDiscovery = async (autoConnectSaved = false) => {
+    setIsRefreshingDiscovery(true);
     try {
       const res = await fetchDiscovery();
       setDockerSources(res.dockerSources);
       setLocalSources(res.localSources);
       setManualSources(res.manualSources);
 
-      if (!activeSource) {
+      // Auto-reconnect saved source on first app mount
+      if (autoConnectSaved && !activeSource) {
+        const savedSourceStr = localStorage.getItem(STORAGE_KEY_ACTIVE_SOURCE);
+        if (savedSourceStr) {
+          try {
+            const savedSource = JSON.parse(savedSourceStr) as DiscoveredSource;
+            const savedCredsStr = localStorage.getItem(STORAGE_KEY_CREDS);
+            const savedCredsMap = savedCredsStr ? JSON.parse(savedCredsStr) : {};
+            const creds = savedCredsMap[savedSource.id] || {};
+
+            const userToUse = savedSource.user || creds.user || 'postgres';
+            const passToUse = creds.pass !== undefined ? creds.pass : (savedSource.defaultPassword || '');
+            const dbToUse = localStorage.getItem(STORAGE_KEY_ACTIVE_DB) || savedSource.database || creds.db || 'postgres';
+
+            const connRes = await connectSource({
+              id: savedSource.id,
+              host: savedSource.host,
+              port: savedSource.port,
+              user: userToUse,
+              password: passToUse,
+              database: dbToUse,
+            });
+
+            if (connRes.success) {
+              const restoredSource = { ...savedSource, user: userToUse, database: dbToUse };
+              setActiveSource(restoredSource);
+              setIsSourceModalOpen(false);
+              return;
+            }
+          } catch (e) {
+            console.warn('Auto-reconnect to saved source failed:', e);
+          }
+        }
+
+        // If no saved source or auto-reconnect failed, open source modal
         setIsSourceModalOpen(true);
       }
     } catch (err) {
       console.warn('Failed to load discovery:', err);
+    } finally {
+      setIsRefreshingDiscovery(false);
     }
   };
 
@@ -50,11 +94,26 @@ export const App: React.FC = () => {
       if (data.databases && data.databases.length > 0) {
         setAvailableDbs(data.databases);
         if (!data.databases.includes(activeDb)) {
-          setActiveDb(data.databases[0]);
+          const fallbackDb = data.databases[0];
+          setActiveDb(fallbackDb);
+          localStorage.setItem(STORAGE_KEY_ACTIVE_DB, fallbackDb);
         }
       }
     } catch (err) {
       console.warn('Failed to load schema:', err);
+    }
+  };
+
+  const handleSelectSource = (src: DiscoveredSource) => {
+    setActiveSource(src);
+    try {
+      localStorage.setItem(STORAGE_KEY_ACTIVE_SOURCE, JSON.stringify(src));
+      if (src.database) {
+        localStorage.setItem(STORAGE_KEY_ACTIVE_DB, src.database);
+        setActiveDb(src.database);
+      }
+    } catch (e) {
+      console.warn('Failed to save active source to localStorage:', e);
     }
   };
 
@@ -63,6 +122,8 @@ export const App: React.FC = () => {
     try {
       const res = await switchDatabase(activeSource.id, newDb);
       setActiveDb(newDb);
+      localStorage.setItem(STORAGE_KEY_ACTIVE_DB, newDb);
+
       if (res.databases) setAvailableDbs(res.databases);
       setSchemaData({
         databases: res.databases || availableDbs,
@@ -85,7 +146,7 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
-    loadDiscovery();
+    loadDiscovery(true);
   }, []);
 
   useEffect(() => {
@@ -107,7 +168,7 @@ export const App: React.FC = () => {
         onSelectDatabase={handleSelectDatabase}
         onOpenCreateDbModal={() => setIsCreateDbModalOpen(true)}
         onRefresh={() => {
-          loadDiscovery();
+          loadDiscovery(false);
           loadSchema();
         }}
       />
@@ -151,10 +212,9 @@ export const App: React.FC = () => {
         localSources={localSources}
         manualSources={manualSources}
         activeSource={activeSource}
-        onSelectSource={(src) => {
-          setActiveSource(src);
-          setIsSourceModalOpen(false);
-        }}
+        onSelectSource={handleSelectSource}
+        onRefreshDiscovery={() => loadDiscovery(false)}
+        isRefreshingDiscovery={isRefreshingDiscovery}
       />
 
       {/* Visual Database Creator Modal */}

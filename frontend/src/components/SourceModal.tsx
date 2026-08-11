@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Server, Container, Terminal, CheckCircle2, AlertCircle, Lock, Loader2, Key, Wrench, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Server, Container, Terminal, CheckCircle2, AlertCircle, Lock, Loader2, Key, Wrench, ShieldAlert, RefreshCw } from 'lucide-react';
 import { DiscoveredSource } from '../types';
 import { connectSource, resetSystemPassword } from '../services/api';
 
@@ -11,7 +11,11 @@ interface SourceModalProps {
   manualSources: DiscoveredSource[];
   activeSource: DiscoveredSource | null;
   onSelectSource: (source: DiscoveredSource) => void;
+  onRefreshDiscovery: () => Promise<void>;
+  isRefreshingDiscovery?: boolean;
 }
+
+const STORAGE_KEY_CREDS = 'pgpulse_source_credentials';
 
 export const SourceModal: React.FC<SourceModalProps> = ({
   isOpen,
@@ -21,11 +25,20 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   manualSources,
   activeSource,
   onSelectSource,
+  onRefreshDiscovery,
+  isRefreshingDiscovery = false,
 }) => {
   const [tab, setTab] = useState<'discovered' | 'manual'>('discovered');
   
-  // Custom passwords/users per discovered source ID
-  const [sourceCredentials, setSourceCredentials] = useState<Record<string, { user: string; pass: string; db: string }>>({});
+  // Custom passwords/users per discovered source ID (persisted in localStorage)
+  const [sourceCredentials, setSourceCredentials] = useState<Record<string, { user: string; pass: string; db: string }>>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_CREDS);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
   
   // Password Reset Drawers per source ID
   const [resetDrawers, setResetDrawers] = useState<Record<string, boolean>>({});
@@ -44,6 +57,14 @@ export const SourceModal: React.FC<SourceModalProps> = ({
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [errorMap, setErrorMap] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_CREDS, JSON.stringify(sourceCredentials));
+    } catch (e) {
+      console.warn('Failed to save source credentials to localStorage:', e);
+    }
+  }, [sourceCredentials]);
 
   if (!isOpen) return null;
 
@@ -130,7 +151,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           [source.id]: { loading: false, success: res.message },
         }));
 
-        // Update creds in state
+        // Update creds in state & localStorage
         updateCreds(source.id, 'pass', newPassToSet);
 
         // Auto-connect with the new password!
@@ -161,6 +182,10 @@ export const SourceModal: React.FC<SourceModalProps> = ({
       });
 
       if (res.success) {
+        updateCreds(manualId, 'user', formData.user);
+        updateCreds(manualId, 'pass', formData.password);
+        updateCreds(manualId, 'db', formData.database);
+
         onSelectSource({
           id: manualId,
           name: `Manual: ${formData.host}:${formData.port} (${formData.database})`,
@@ -226,7 +251,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setResetDrawers((prev) => ({ ...prev, [source.id]: !prev[source.id] }))}
-              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
               title="Reset or fix forgotten password"
             >
               <Wrench className="w-3.5 h-3.5" />
@@ -236,7 +261,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <button
               disabled={isLoading}
               onClick={() => handleConnectDiscovered(source)}
-              className={`px-4 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm ${
+              className={`px-4 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer ${
                 isDocker
                   ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
                   : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
@@ -298,7 +323,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
               {isAuthFailed && !isResetOpen && (
                 <button
                   onClick={() => setResetDrawers((prev) => ({ ...prev, [source.id]: true }))}
-                  className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shrink-0 ml-2 shadow transition-colors"
+                  className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[11px] shrink-0 ml-2 shadow transition-colors cursor-pointer"
                 >
                   Quick Sudo Reset
                 </button>
@@ -362,7 +387,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
               <button
                 disabled={statusReset?.loading || isLoading}
                 onClick={() => handleResetPasswordAndAutoConnect(source)}
-                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all"
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
               >
                 {statusReset?.loading || isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -389,19 +414,32 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <Server className="w-6 h-6 text-cyan-400" />
             <h2 className="text-xl font-bold text-slate-100">Select PostgreSQL Source</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRefreshDiscovery}
+              disabled={isRefreshingDiscovery}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              title="Rescan Docker socket and local ports for new containers"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingDiscovery ? 'animate-spin' : ''}`} />
+              <span>{isRefreshingDiscovery ? 'Scanning...' : 'Rescan Containers'}</span>
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab switcher */}
         <div className="flex gap-2 my-4 p-1 bg-slate-900/80 rounded-xl border border-slate-800">
           <button
             onClick={() => setTab('discovered')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               tab === 'discovered'
                 ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md'
                 : 'text-slate-400 hover:text-slate-200'
@@ -411,7 +449,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
           </button>
           <button
             onClick={() => setTab('manual')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               tab === 'manual'
                 ? 'bg-cyan-500 text-slate-950 font-semibold shadow-md'
                 : 'text-slate-400 hover:text-slate-200'
@@ -434,9 +472,20 @@ export const SourceModal: React.FC<SourceModalProps> = ({
             <>
               {/* Docker Sources */}
               <div>
-                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">
-                  <Container className="w-4 h-4" />
-                  Docker Containers ({dockerSources.length})
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-cyan-400 mb-3">
+                  <div className="flex items-center gap-2">
+                    <Container className="w-4 h-4" />
+                    <span>Docker Containers ({dockerSources.length})</span>
+                  </div>
+
+                  <button
+                    onClick={onRefreshDiscovery}
+                    disabled={isRefreshingDiscovery}
+                    className="text-[11px] text-cyan-300 hover:text-cyan-200 underline font-normal flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRefreshingDiscovery ? 'animate-spin' : ''}`} />
+                    <span>{isRefreshingDiscovery ? 'Scanning...' : 'Scan Now'}</span>
+                  </button>
                 </div>
 
                 {dockerSources.length === 0 ? (
@@ -531,7 +580,7 @@ export const SourceModal: React.FC<SourceModalProps> = ({
                 <button
                   type="submit"
                   disabled={loadingId === 'manual'}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   {loadingId === 'manual' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                   Save & Connect to Database

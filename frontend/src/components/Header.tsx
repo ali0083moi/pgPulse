@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers, PlusCircle } from 'lucide-react';
+import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers, PlusCircle, Star, Github } from 'lucide-react';
 import { DiscoveredSource } from '../types';
 
 interface HeaderProps {
@@ -135,8 +135,22 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
       </div>
 
-      {/* Action utilities */}
+      {/* Action utilities & GitHub Star Button */}
       <div className="flex items-center gap-3">
+        <a
+          href="https://github.com/ali0083moi/pgPulse"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 hover:from-amber-500/20 hover:to-yellow-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20 transition-all transform hover:-translate-y-0.5 cursor-pointer group"
+          title="Give PgPulse a Star on GitHub!"
+        >
+          <Star className="w-4 h-4 text-amber-400 fill-amber-400/40 group-hover:fill-amber-400 group-hover:scale-110 transition-all duration-300" />
+          <span className="hidden sm:inline font-bold">Star on GitHub</span>
+          <span className="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold">
+            ★
+          </span>
+        </a>
+
         <button
           onClick={onRefresh}
           className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
