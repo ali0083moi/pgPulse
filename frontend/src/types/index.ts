@@ -74,3 +74,20 @@ export interface UsersResponse {
   error?: string;
   requiresSuperuser?: boolean;
 }
+
+export interface HistoryItem {
+  id: string;
+  sql: string;
+  timestamp: number;
+  durationMs: number;
+  rowCount: number | null;
+  status: 'success' | 'error';
+  errorMessage?: string;
+}
+
+export interface SavedSnippet {
+  id: string;
+  title: string;
+  sql: string;
+  createdAt: number;
+}

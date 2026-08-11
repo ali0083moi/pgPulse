@@ -13,13 +13,14 @@ import {
   ChevronLeft,
   Table as TableIcon,
   List,
-  Key,
-  Network,
-  Database as DbIcon,
-  Users,
-  Search,
+  History,
+  Star,
+  Zap,
+  Activity,
+  Plus,
+  Bookmark,
 } from 'lucide-react';
-import { DiscoveredSource, QueryResultPayload, SchemaTreeResponse } from '../types';
+import { DiscoveredSource, QueryResultPayload, SchemaTreeResponse, HistoryItem, SavedSnippet } from '../types';
 import { executeSql } from '../services/api';
 import { ResultGrid } from './ResultGrid';
 import { DataChart } from './DataChart';
@@ -28,7 +29,12 @@ interface SqlStudioProps {
   activeSource: DiscoveredSource | null;
   schemaData: SchemaTreeResponse | null;
   onOpenCreateTableModal?: () => void;
+  onOpenCreateIndexModal?: () => void;
+  onOpenDbActivityModal?: () => void;
 }
+
+const STORAGE_KEY_HISTORY = 'pgpulse_query_history';
+const STORAGE_KEY_SNIPPETS = 'pgpulse_saved_snippets';
 
 const QUICK_COMMANDS = [
   {
@@ -68,12 +74,40 @@ const QUICK_COMMANDS = [
   },
 ];
 
-export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, onOpenCreateTableModal }) => {
+export const SqlStudio: React.FC<SqlStudioProps> = ({
+  activeSource,
+  schemaData,
+  onOpenCreateTableModal,
+  onOpenCreateIndexModal,
+  onOpenDbActivityModal,
+}) => {
   const [sql, setSql] = useState<string>(
     '-- Write your SQL query here\nSELECT table_name FROM information_schema.tables WHERE table_schema = \'public\';\n'
   );
   const [result, setResult] = useState<QueryResultPayload | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+
+  // History & Snippets Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
+  const [sidebarTab, setSidebarTab] = useState<'history' | 'snippets'>('history');
+  
+  const [queryHistory, setQueryHistory] = useState<HistoryItem[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_HISTORY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [savedSnippets, setSavedSnippets] = useState<SavedSnippet[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_SNIPPETS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Resizable Editor State (Height %)
   const [editorHeightPercent, setEditorHeightPercent] = useState<number>(45);
@@ -88,6 +122,22 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
   const workspaceRef = useRef<HTMLDivElement>(null);
 
   const monaco = useMonaco();
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(queryHistory.slice(0, 50)));
+    } catch (e) {
+      console.warn('Failed to save query history:', e);
+    }
+  }, [queryHistory]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_SNIPPETS, JSON.stringify(savedSnippets));
+    } catch (e) {
+      console.warn('Failed to save snippets:', e);
+    }
+  }, [savedSnippets]);
 
   // Monaco SQL Completion Provider
   useEffect(() => {
@@ -154,21 +204,68 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
     if (!sqlToRun.trim()) return;
 
     setLoading(true);
+    const startTime = Date.now();
+
     try {
       const res = await executeSql(activeSource.id, sqlToRun);
       setResult(res);
+
+      const historyItem: HistoryItem = {
+        id: Math.random().toString(),
+        sql: sqlToRun,
+        timestamp: Date.now(),
+        durationMs: res.durationMs || Date.now() - startTime,
+        rowCount: res.rowCount,
+        status: res.error ? 'error' : 'success',
+        errorMessage: res.error,
+      };
+
+      setQueryHistory((prev) => [historyItem, ...prev.filter((h) => h.sql !== sqlToRun)]);
     } catch (err: any) {
+      const errorMsg = err.message || 'Failed to execute query';
       setResult({
         command: 'ERROR',
         rowCount: 0,
-        durationMs: 0,
+        durationMs: Date.now() - startTime,
         columns: [],
         rows: [],
-        error: err.message || 'Failed to execute query',
+        error: errorMsg,
       });
+
+      const historyItem: HistoryItem = {
+        id: Math.random().toString(),
+        sql: sqlToRun,
+        timestamp: Date.now(),
+        durationMs: Date.now() - startTime,
+        rowCount: 0,
+        status: 'error',
+        errorMessage: errorMsg,
+      };
+
+      setQueryHistory((prev) => [historyItem, ...prev.filter((h) => h.sql !== sqlToRun)]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveSnippet = (sqlSnippet: string) => {
+    const title = window.prompt('Enter a title for this saved SQL snippet:', 'My Query Snippet');
+    if (!title) return;
+
+    const newSnippet: SavedSnippet = {
+      id: Math.random().toString(),
+      title,
+      sql: sqlSnippet,
+      createdAt: Date.now(),
+    };
+
+    setSavedSnippets((prev) => [newSnippet, ...prev]);
+    setIsSidebarOpen(true);
+    setSidebarTab('snippets');
+  };
+
+  const handleDeleteSnippet = (id: string) => {
+    setSavedSnippets((prev) => prev.filter((s) => s.id !== id));
   };
 
   const handleEditorMount = (editor: any, monacoInstance: any) => {
@@ -249,6 +346,15 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
           </button>
 
           <button
+            onClick={() => handleSaveSnippet(sql)}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Save current SQL as a snippet"
+          >
+            <Bookmark className="w-3.5 h-3.5 text-amber-400" />
+            Save Snippet
+          </button>
+
+          <button
             onClick={() => setSql('')}
             className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
           >
@@ -259,6 +365,30 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
 
         {/* Right Panel Toggle & View Controls */}
         <div className="flex items-center gap-2">
+          {onOpenDbActivityModal && (
+            <button
+              onClick={onOpenDbActivityModal}
+              className="px-3 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Live DB Process Monitor & Process Killer"
+            >
+              <Activity className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span>⚡ DB Activity</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              isSidebarOpen
+                ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-300 shadow-sm'
+                : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+            }`}
+            title="Toggle Query History & Saved Snippets Sidebar"
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>History & Snippets</span>
+          </button>
+
           <button
             onClick={() => setIsAnalyticsOpen(!isAnalyticsOpen)}
             className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
@@ -269,7 +399,7 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
             title="Toggle Right Live Analytics Side Panel"
           >
             <BarChart2 className="w-3.5 h-3.5" />
-            <span>Live Analytics Panel</span>
+            <span>Live Analytics</span>
             {isAnalyticsOpen ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
@@ -284,6 +414,16 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
           >
             <TableIcon className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>+ Create Table</span>
+          </button>
+        )}
+
+        {onOpenCreateIndexModal && (
+          <button
+            onClick={onOpenCreateIndexModal}
+            className="px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-md shadow-amber-500/20 mr-1"
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            <span>+ Create Index</span>
           </button>
         )}
 
@@ -334,25 +474,122 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
         )}
       </div>
 
-      {/* Monaco SQL Editor Section (Resizable Height) */}
-      <div style={{ height: `${editorHeightPercent}%` }} className="min-h-[120px] max-h-[85%] relative border-b border-slate-800">
-        <Editor
-          height="100%"
-          defaultLanguage="sql"
-          theme="vs-dark"
-          value={sql}
-          onChange={(val) => setSql(val || '')}
-          onMount={handleEditorMount}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            lineNumbers: 'on',
-            scrollBeyondLastLine: false,
-            automaticLayout: true,
-            padding: { top: 12, bottom: 12 },
-            fontFamily: 'Fira Code, monospace',
-          }}
-        />
+      {/* Editor & Collapsible History/Snippets Sidebar Container */}
+      <div style={{ height: `${editorHeightPercent}%` }} className="min-h-[120px] max-h-[85%] flex relative border-b border-slate-800">
+        {/* History / Snippets Left Drawer */}
+        {isSidebarOpen && (
+          <div className="w-72 bg-slate-900/90 border-r border-slate-800 flex flex-col h-full shrink-0 z-10">
+            {/* Tabs */}
+            <div className="flex items-center justify-between p-2 border-b border-slate-800 bg-slate-950/60">
+              <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  onClick={() => setSidebarTab('history')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    sidebarTab === 'history' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  History ({queryHistory.length})
+                </button>
+                <button
+                  onClick={() => setSidebarTab('snippets')}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                    sidebarTab === 'snippets' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Snippets ({savedSnippets.length})
+                </button>
+              </div>
+
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1 rounded text-slate-500 hover:text-slate-300"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Content List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              {sidebarTab === 'history' ? (
+                queryHistory.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-6">No query history yet.</p>
+                ) : (
+                  queryHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSql(item.sql)}
+                      className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-slate-800/80 text-xs font-mono transition-all cursor-pointer group space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <span className={item.status === 'error' ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                          {item.status === 'error' ? 'Failed' : `${item.durationMs}ms`}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSaveSnippet(item.sql);
+                            }}
+                            className="p-0.5 rounded hover:bg-slate-700 text-slate-500 hover:text-amber-300"
+                            title="Save as snippet"
+                          >
+                            <Star className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-slate-300 line-clamp-2 truncate">{item.sql}</p>
+                    </div>
+                  ))
+                )
+              ) : savedSnippets.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-6">No saved snippets yet. Click "Save Snippet" to add one.</p>
+              ) : (
+                savedSnippets.map((snippet) => (
+                  <div
+                    key={snippet.id}
+                    onClick={() => setSql(snippet.sql)}
+                    className="p-2.5 rounded-xl bg-slate-950/80 hover:bg-slate-800 border border-amber-500/20 text-xs font-mono transition-all cursor-pointer group space-y-1"
+                  >
+                    <div className="flex items-center justify-between text-amber-300 font-bold">
+                      <span className="truncate">{snippet.title}</span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSnippet(snippet.id);
+                        }}
+                        className="p-0.5 text-slate-500 hover:text-rose-400"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <p className="text-slate-300 line-clamp-2 truncate">{snippet.sql}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Monaco Editor */}
+        <div className="flex-1 h-full relative">
+          <Editor
+            height="100%"
+            defaultLanguage="sql"
+            theme="vs-dark"
+            value={sql}
+            onChange={(val) => setSql(val || '')}
+            onMount={handleEditorMount}
+            options={{
+              minimap: { enabled: false },
+              fontSize: 14,
+              lineNumbers: 'on',
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+              padding: { top: 12, bottom: 12 },
+              fontFamily: 'Fira Code, monospace',
+            }}
+          />
+        </div>
       </div>
 
       {/* Resizable Vertical Handle (Drag up/down) */}
@@ -413,7 +650,12 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, 
             )}
 
             {result && !result.error && (
-              <ResultGrid columns={result.columns} rows={result.rows} sourceId={activeSource?.id} />
+              <ResultGrid
+                columns={result.columns}
+                rows={result.rows}
+                sourceId={activeSource?.id}
+                onRefreshData={() => handleRunQuery()}
+              />
             )}
           </div>
         </div>

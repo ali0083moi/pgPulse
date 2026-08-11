@@ -6,6 +6,8 @@ import { SchemaBrowser } from './components/SchemaBrowser';
 import { UserManagement } from './components/UserManagement';
 import { CreateDatabaseModal } from './components/CreateDatabaseModal';
 import { CreateTableModal } from './components/CreateTableModal';
+import { CreateIndexModal } from './components/CreateIndexModal';
+import { DbActivityModal } from './components/DbActivityModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DiscoveredSource, SchemaTreeResponse } from './types';
 import { fetchDiscovery, fetchSchema, switchDatabase, connectSource } from './services/api';
@@ -19,6 +21,8 @@ export const App: React.FC = () => {
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [isCreateDbModalOpen, setIsCreateDbModalOpen] = useState(false);
   const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
+  const [isCreateIndexModalOpen, setIsCreateIndexModalOpen] = useState(false);
+  const [isDbActivityModalOpen, setIsDbActivityModalOpen] = useState(false);
   const [isRefreshingDiscovery, setIsRefreshingDiscovery] = useState(false);
 
   // Discovered Sources
@@ -145,6 +149,10 @@ export const App: React.FC = () => {
     await loadSchema();
   };
 
+  const handleIndexCreated = async () => {
+    await loadSchema();
+  };
+
   useEffect(() => {
     loadDiscovery(true);
   }, []);
@@ -181,6 +189,8 @@ export const App: React.FC = () => {
               activeSource={activeSource}
               schemaData={schemaData}
               onOpenCreateTableModal={() => setIsCreateTableModalOpen(true)}
+              onOpenCreateIndexModal={() => setIsCreateIndexModalOpen(true)}
+              onOpenDbActivityModal={() => setIsDbActivityModalOpen(true)}
             />
           </ErrorBoundary>
         )}
@@ -235,6 +245,26 @@ export const App: React.FC = () => {
           onTableCreated={handleTableCreated}
           activeSourceId={activeSource?.id}
           schemaData={schemaData}
+        />
+      </ErrorBoundary>
+
+      {/* Visual Index Creator Modal */}
+      <ErrorBoundary fallbackTitle="Create Index Modal Error">
+        <CreateIndexModal
+          isOpen={isCreateIndexModalOpen}
+          onClose={() => setIsCreateIndexModalOpen(false)}
+          onIndexCreated={handleIndexCreated}
+          activeSourceId={activeSource?.id}
+          schemaData={schemaData}
+        />
+      </ErrorBoundary>
+
+      {/* Live DB Activity & Process Killer Modal */}
+      <ErrorBoundary fallbackTitle="DB Activity Monitor Error">
+        <DbActivityModal
+          isOpen={isDbActivityModalOpen}
+          onClose={() => setIsDbActivityModalOpen(false)}
+          activeSourceId={activeSource?.id}
         />
       </ErrorBoundary>
     </div>
