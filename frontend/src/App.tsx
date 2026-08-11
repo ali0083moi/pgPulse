@@ -4,12 +4,17 @@ import { SourceModal } from './components/SourceModal';
 import { SqlStudio } from './components/SqlStudio';
 import { SchemaBrowser } from './components/SchemaBrowser';
 import { UserManagement } from './components/UserManagement';
+import { CreateDatabaseModal } from './components/CreateDatabaseModal';
+import { CreateTableModal } from './components/CreateTableModal';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { DiscoveredSource, SchemaTreeResponse } from './types';
 import { fetchDiscovery, fetchSchema, switchDatabase } from './services/api';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'editor' | 'schema' | 'users'>('editor');
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [isCreateDbModalOpen, setIsCreateDbModalOpen] = useState(false);
+  const [isCreateTableModalOpen, setIsCreateTableModalOpen] = useState(false);
 
   // Discovered Sources
   const [dockerSources, setDockerSources] = useState<DiscoveredSource[]>([]);
@@ -70,6 +75,15 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleDatabaseCreated = async (newDbName: string) => {
+    await handleSelectDatabase(newDbName);
+    await loadSchema();
+  };
+
+  const handleTableCreated = async () => {
+    await loadSchema();
+  };
+
   useEffect(() => {
     loadDiscovery();
   }, []);
@@ -91,6 +105,7 @@ export const App: React.FC = () => {
         activeDb={activeDb}
         availableDbs={availableDbs}
         onSelectDatabase={handleSelectDatabase}
+        onOpenCreateDbModal={() => setIsCreateDbModalOpen(true)}
         onRefresh={() => {
           loadDiscovery();
           loadSchema();
@@ -100,19 +115,32 @@ export const App: React.FC = () => {
       {/* Main Workspace Body */}
       <main className="flex-1 flex overflow-hidden">
         {activeTab === 'editor' && (
-          <SqlStudio activeSource={activeSource} schemaData={schemaData} />
+          <ErrorBoundary fallbackTitle="SQL Studio Error">
+            <SqlStudio
+              activeSource={activeSource}
+              schemaData={schemaData}
+              onOpenCreateTableModal={() => setIsCreateTableModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
         {activeTab === 'schema' && (
-          <SchemaBrowser
-            schemaData={schemaData}
-            onSelectTable={() => {
-              setActiveTab('editor');
-            }}
-          />
+          <ErrorBoundary fallbackTitle="Schema Visualizer Error">
+            <SchemaBrowser
+              schemaData={schemaData}
+              onSelectTable={() => {
+                setActiveTab('editor');
+              }}
+              onOpenCreateTableModal={() => setIsCreateTableModalOpen(true)}
+            />
+          </ErrorBoundary>
         )}
 
-        {activeTab === 'users' && <UserManagement activeSource={activeSource} />}
+        {activeTab === 'users' && (
+          <ErrorBoundary fallbackTitle="User Management Error">
+            <UserManagement activeSource={activeSource} />
+          </ErrorBoundary>
+        )}
       </main>
 
       {/* Source Switcher & Connection Modal */}
@@ -128,6 +156,27 @@ export const App: React.FC = () => {
           setIsSourceModalOpen(false);
         }}
       />
+
+      {/* Visual Database Creator Modal */}
+      <ErrorBoundary fallbackTitle="Create Database Modal Error">
+        <CreateDatabaseModal
+          isOpen={isCreateDbModalOpen}
+          onClose={() => setIsCreateDbModalOpen(false)}
+          onDatabaseCreated={handleDatabaseCreated}
+          activeSourceId={activeSource?.id}
+        />
+      </ErrorBoundary>
+
+      {/* Visual Table Creator Modal */}
+      <ErrorBoundary fallbackTitle="Create Table Modal Error">
+        <CreateTableModal
+          isOpen={isCreateTableModalOpen}
+          onClose={() => setIsCreateTableModalOpen(false)}
+          onTableCreated={handleTableCreated}
+          activeSourceId={activeSource?.id}
+          schemaData={schemaData}
+        />
+      </ErrorBoundary>
     </div>
   );
 };

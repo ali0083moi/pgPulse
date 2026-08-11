@@ -27,6 +27,7 @@ import { DataChart } from './DataChart';
 interface SqlStudioProps {
   activeSource: DiscoveredSource | null;
   schemaData: SchemaTreeResponse | null;
+  onOpenCreateTableModal?: () => void;
 }
 
 const QUICK_COMMANDS = [
@@ -67,7 +68,7 @@ const QUICK_COMMANDS = [
   },
 ];
 
-export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }) => {
+export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData, onOpenCreateTableModal }) => {
   const [sql, setSql] = useState<string>(
     '-- Write your SQL query here\nSELECT table_name FROM information_schema.tables WHERE table_schema = \'public\';\n'
   );
@@ -276,6 +277,16 @@ export const SqlStudio: React.FC<SqlStudioProps> = ({ activeSource, schemaData }
 
       {/* Quick Developer Commands & Dynamic Table Chips Bar */}
       <div className="h-10 border-b border-slate-800/80 bg-slate-950/80 px-4 flex items-center gap-2 shrink-0 overflow-x-auto">
+        {onOpenCreateTableModal && (
+          <button
+            onClick={onOpenCreateTableModal}
+            className="px-3 py-1 rounded-md bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 shadow-md shadow-cyan-500/20 mr-1"
+          >
+            <TableIcon className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>+ Create Table</span>
+          </button>
+        )}
+
         <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-cyan-400 shrink-0 mr-1">
           <List className="w-3.5 h-3.5" />
           <span>Quick Actions:</span>

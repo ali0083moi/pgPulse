@@ -3,11 +3,12 @@ import { ReactFlow, Controls, Background, Node, Edge, MarkerType, Handle, Positi
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
 import { SchemaTreeResponse, TableInfo } from '../types';
-import { Table, Key, Network, Eye, Layers, Info, Wand2, ArrowDownCircle, ArrowRightCircle, Grid } from 'lucide-react';
+import { Table, Key, Network, Eye, Layers, Info, Wand2, ArrowDownCircle, ArrowRightCircle, Grid, Plus } from 'lucide-react';
 
 interface SchemaBrowserProps {
   schemaData: SchemaTreeResponse | null;
   onSelectTable: (tableName: string) => void;
+  onOpenCreateTableModal?: () => void;
 }
 
 // Custom ReactFlow Node for ERD Tables with clean top/bottom/left/right Handles
@@ -102,7 +103,7 @@ const getLayoutedElements = (rawNodes: Node[], rawEdges: Edge[], direction: 'TB'
   return { nodes: layoutedNodes, edges: rawEdges };
 };
 
-export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSelectTable }) => {
+export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSelectTable, onOpenCreateTableModal }) => {
   const [viewMode, setViewMode] = useState<'tree' | 'erd'>('erd');
   const [selectedSchema, setSelectedSchema] = useState<string>('public');
   const [layoutDir, setLayoutDir] = useState<'TB' | 'LR' | 'GRID'>('TB');
@@ -203,6 +204,17 @@ export const SchemaBrowser: React.FC<SchemaBrowserProps> = ({ schemaData, onSele
                 </option>
               ))}
             </select>
+
+            {onOpenCreateTableModal && (
+              <button
+                onClick={onOpenCreateTableModal}
+                className="px-3 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ml-2"
+                title="Visually create a new table"
+              >
+                <Plus className="w-3.5 h-3.5 text-cyan-400 stroke-[3]" />
+                <span>+ Create Table</span>
+              </button>
+            )}
           </div>
 
           {/* Auto-Layout Controls for ERD */}

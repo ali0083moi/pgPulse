@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers } from 'lucide-react';
+import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers, PlusCircle } from 'lucide-react';
 import { DiscoveredSource } from '../types';
 
 interface HeaderProps {
@@ -10,6 +10,7 @@ interface HeaderProps {
   activeDb: string;
   availableDbs: string[];
   onSelectDatabase: (db: string) => void;
+  onOpenCreateDbModal: () => void;
   onRefresh: () => void;
 }
 
@@ -21,6 +22,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeDb,
   availableDbs,
   onSelectDatabase,
+  onOpenCreateDbModal,
   onRefresh,
 }) => {
   return (
@@ -51,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onOpenSourceModal}
-          className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all text-sm group"
+          className="flex items-center gap-3 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 transition-all text-sm group cursor-pointer"
         >
           <div className="flex items-center gap-2">
             <span className={`w-2.5 h-2.5 rounded-full ${activeSource ? 'bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400' : 'bg-amber-500'}`} />
@@ -63,22 +65,33 @@ export const Header: React.FC<HeaderProps> = ({
           <Plus className="w-3.5 h-3.5 text-slate-400 ml-1" />
         </button>
 
-        {/* Database Selector Dropdown */}
-        {activeSource && availableDbs.length > 0 && (
-          <div className="flex items-center gap-2 bg-slate-900 border border-cyan-800/60 rounded-lg px-2 py-1">
-            <Layers className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] font-semibold uppercase text-slate-400">DB:</span>
-            <select
-              value={activeDb}
-              onChange={(e) => onSelectDatabase(e.target.value)}
-              className="bg-transparent text-xs font-bold text-cyan-300 font-mono focus:outline-none cursor-pointer"
+        {/* Database Selector Dropdown & New DB Button */}
+        {activeSource && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-slate-900 border border-cyan-800/60 rounded-lg px-2 py-1">
+              <Layers className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-[11px] font-semibold uppercase text-slate-400">DB:</span>
+              <select
+                value={activeDb}
+                onChange={(e) => onSelectDatabase(e.target.value)}
+                className="bg-transparent text-xs font-bold text-cyan-300 font-mono focus:outline-none cursor-pointer"
+              >
+                {availableDbs.map((dbName) => (
+                  <option key={dbName} value={dbName} className="bg-slate-900 text-slate-200 font-mono">
+                    {dbName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={onOpenCreateDbModal}
+              className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Create a new PostgreSQL database"
             >
-              {availableDbs.map((dbName) => (
-                <option key={dbName} value={dbName} className="bg-slate-900 text-slate-200 font-mono">
-                  {dbName}
-                </option>
-              ))}
-            </select>
+              <PlusCircle className="w-3.5 h-3.5 text-cyan-400" />
+              <span>+ New DB</span>
+            </button>
           </div>
         )}
       </div>
@@ -87,7 +100,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
         <button
           onClick={() => setActiveTab('editor')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             activeTab === 'editor'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -99,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => setActiveTab('schema')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             activeTab === 'schema'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -111,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
             activeTab === 'users'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
@@ -126,7 +139,7 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3">
         <button
           onClick={onRefresh}
-          className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+          className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           title="Refresh Data"
         >
           <RefreshCw className="w-4 h-4" />
