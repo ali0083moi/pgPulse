@@ -1,12 +1,12 @@
 import React from 'react';
-import { Database, Server, RefreshCw, Plus, Shield, Code, Network, BarChart2, Layers } from 'lucide-react';
+import { Database, Server, RefreshCw, Plus, Shield, Code, Network, Layers } from 'lucide-react';
 import { DiscoveredSource } from '../types';
 
 interface HeaderProps {
   activeSource: DiscoveredSource | null;
   onOpenSourceModal: () => void;
-  activeTab: 'editor' | 'schema' | 'users' | 'analytics';
-  setActiveTab: (tab: 'editor' | 'schema' | 'users' | 'analytics') => void;
+  activeTab: 'editor' | 'schema' | 'users';
+  setActiveTab: (tab: 'editor' | 'schema' | 'users') => void;
   activeDb: string;
   availableDbs: string[];
   onSelectDatabase: (db: string) => void;
@@ -119,18 +119,6 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <Shield className="w-4 h-4" />
           Users & Access
-        </button>
-
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'analytics'
-              ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20 font-semibold'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-          }`}
-        >
-          <BarChart2 className="w-4 h-4" />
-          Analytics
         </button>
       </div>
 

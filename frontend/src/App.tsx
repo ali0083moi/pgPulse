@@ -4,12 +4,11 @@ import { SourceModal } from './components/SourceModal';
 import { SqlStudio } from './components/SqlStudio';
 import { SchemaBrowser } from './components/SchemaBrowser';
 import { UserManagement } from './components/UserManagement';
-import { AnalyticsStudio } from './components/AnalyticsStudio';
 import { DiscoveredSource, SchemaTreeResponse } from './types';
-import { fetchDiscovery, fetchSchema, switchDatabase, executeSql } from './services/api';
+import { fetchDiscovery, fetchSchema, switchDatabase } from './services/api';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'editor' | 'schema' | 'users' | 'analytics'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'schema' | 'users'>('editor');
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
 
   // Discovered Sources
@@ -30,7 +29,6 @@ export const App: React.FC = () => {
       setLocalSources(res.localSources);
       setManualSources(res.manualSources);
 
-      // Open source modal on first load if no source selected yet
       if (!activeSource) {
         setIsSourceModalOpen(true);
       }
@@ -108,21 +106,13 @@ export const App: React.FC = () => {
         {activeTab === 'schema' && (
           <SchemaBrowser
             schemaData={schemaData}
-            onSelectTable={(tbl) => {
+            onSelectTable={() => {
               setActiveTab('editor');
             }}
           />
         )}
 
         {activeTab === 'users' && <UserManagement activeSource={activeSource} />}
-
-        {activeTab === 'analytics' && (
-          <AnalyticsStudio
-            activeSource={activeSource}
-            activeDb={activeDb}
-            schemaData={schemaData}
-          />
-        )}
       </main>
 
       {/* Source Switcher & Connection Modal */}
